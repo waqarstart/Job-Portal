@@ -1,156 +1,94 @@
-// function Home() {
-//   return (
-//     <div>
-//       <h1>Home Page</h1>
-//     </div>
-//   );
-// }
-
-// export default Home;
-
-// import {
-//   HiOutlineMagnifyingGlass,
-//   HiOutlineMapPin,
-// } from "react-icons/hi2";
-
-// export default function Home() {
-//   return (
-//     <main className="min-h-screen bg-gray-50">
-//       {/* Hero */}
-//       <section className="bg-blue-600">
-//         <div className="mx-auto max-w-7xl px-6 py-20">
-//           <div className="mx-auto max-w-4xl text-center">
-//             <h1 className="text-5xl font-bold text-white">
-//               Find Your Next Job
-//             </h1>
-
-//             <p className="mt-4 text-lg text-blue-100">
-//               Search jobs by title and city.
-//             </p>
-//           </div>
-
-//           {/* Search Box */}
-//           <div className="mx-auto mt-10 max-w-5xl rounded-2xl bg-white p-4 shadow-xl">
-//             <form className="grid gap-4 md:grid-cols-[1fr_1fr_auto]">
-//               {/* Job Title */}
-//               <div className="flex items-center rounded-xl border border-gray-200 px-4">
-//                 <HiOutlineMagnifyingGlass className="mr-3 h-5 w-5 text-gray-400" />
-
-//                 <input
-//                   type="text"
-//                   placeholder="Job title"
-//                   className="h-14 w-full bg-transparent outline-none"
-//                 />
-//               </div>
-
-//               {/* City */}
-//               <div className="flex items-center rounded-xl border border-gray-200 px-4">
-//                 <HiOutlineMapPin className="mr-3 h-5 w-5 text-gray-400" />
-
-//                 <input
-//                   type="text"
-//                   placeholder="City"
-//                   className="h-14 w-full bg-transparent outline-none"
-//                 />
-//               </div>
-
-//               {/* Search Button */}
-//               <button
-//                 type="submit"
-//                 className="h-14 rounded-xl bg-blue-600 px-8 font-semibold text-white transition hover:bg-blue-700"
-//               >
-//                 Search
-//               </button>
-//             </form>
-//           </div>
-//         </div>
-//       </section>
-
-//       {/* Placeholder for Job Listings */}
-//       <section className="mx-auto max-w-7xl px-6 py-16">
-//         <h2 className="mb-6 text-3xl font-bold text-gray-900">
-//           Latest Jobs
-//         </h2>
-
-//         <div className="rounded-xl border border-dashed border-gray-300 bg-white p-12 text-center text-gray-500">
-//           Job listings will appear here...
-//         </div>
-//       </section>
-//     </main>
-//   );
-// }
-
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import {
   HiOutlineMagnifyingGlass,
   HiOutlineMapPin,
 } from "react-icons/hi2";
 
+import Navbar from "../components/Navbar";
 import { searchJobs } from "../services/jobApi";
 
 export default function Home() {
   const [title, setTitle] = useState("");
   const [city, setCity] = useState("");
-
   const [jobs, setJobs] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   async function handleSearch(e) {
     e.preventDefault();
 
-    const data = await searchJobs(title);
+    try {
+      setLoading(true);
 
-    const filtered = data.filter((job) => {
-      if (!city) return true;
+      const data = await searchJobs(title);
 
-      return job.candidate_required_location
-        .toLowerCase()
-        .includes(city.toLowerCase());
-    });
+      const filtered = data.filter((job) => {
+        if (!city) return true;
 
-    setJobs(filtered);
+        return (
+          job.candidate_required_location &&
+          job.candidate_required_location
+            .toLowerCase()
+            .includes(city.toLowerCase())
+        );
+      });
+
+      setJobs(filtered);
+    } catch (err) {
+      console.error(err);
+      alert("Unable to fetch jobs.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
     <main className="min-h-screen bg-gray-50">
+      <Navbar />
+
+      {/* Hero */}
       <section className="bg-blue-600">
         <div className="mx-auto max-w-7xl px-6 py-20">
-
           <h1 className="text-center text-5xl font-bold text-white">
             Find Your Next Job
           </h1>
 
-          <p className="mt-4 text-center text-blue-100">
-            Search by title and city.
+          <p className="mt-4 text-center text-lg text-blue-100">
+            Search jobs by title and city.
           </p>
 
+          {/* Search */}
           <form
             onSubmit={handleSearch}
             className="mx-auto mt-10 grid max-w-5xl gap-4 rounded-2xl bg-white p-4 shadow-xl md:grid-cols-[1fr_1fr_auto]"
           >
             <div className="flex items-center rounded-xl border px-4">
-              <HiOutlineMagnifyingGlass className="mr-3 text-gray-400" />
+              <HiOutlineMagnifyingGlass className="mr-3 h-5 w-5 text-gray-400" />
 
               <input
+                type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="h-14 w-full outline-none"
                 placeholder="Job title"
+                className="h-14 w-full outline-none"
               />
             </div>
 
             <div className="flex items-center rounded-xl border px-4">
-              <HiOutlineMapPin className="mr-3 text-gray-400" />
+              <HiOutlineMapPin className="mr-3 h-5 w-5 text-gray-400" />
 
               <input
+                type="text"
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
-                className="h-14 w-full outline-none"
                 placeholder="City"
+                className="h-14 w-full outline-none"
               />
             </div>
 
             <button
-              className="rounded-xl bg-blue-600 px-8 font-semibold text-white hover:bg-blue-700"
+              type="submit"
+              className="rounded-xl bg-blue-600 px-8 font-semibold text-white transition hover:bg-blue-700"
             >
               Search
             </button>
@@ -158,31 +96,59 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-6 py-10">
+      {/* Results */}
+      <section className="mx-auto max-w-6xl px-6 py-12">
+        <h2 className="mb-8 text-3xl font-bold">
+          Available Jobs
+        </h2>
 
-        <div className="space-y-4">
+        {loading && (
+          <div className="rounded-xl bg-white p-10 text-center shadow">
+            Loading jobs...
+          </div>
+        )}
 
+        {!loading && jobs.length === 0 && (
+          <div className="rounded-xl bg-white p-10 text-center shadow">
+            Search for a job to begin.
+          </div>
+        )}
+
+        <div className="space-y-5">
           {jobs.map((job) => (
-            <div
+            <Link
               key={job.id}
-              className="rounded-xl border bg-white p-6 shadow-sm"
+              to={`/interview/${job.id}`}
+              state={{ job }}
+              className="block rounded-xl border bg-white p-6 shadow-sm transition duration-200 hover:border-blue-600 hover:shadow-lg"
             >
-              <h2 className="text-xl font-semibold">
-                {job.title}
-              </h2>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-2xl font-semibold">
+                    {job.title}
+                  </h3>
 
-              <p className="mt-2 text-gray-600">
-                📍 {job.candidate_required_location}
-              </p>
+                  <p className="mt-2 text-gray-600">
+                    📍 {job.candidate_required_location}
+                  </p>
 
-              <p className="mt-1 text-sm text-gray-500">
-                Posted {new Date(job.publication_date).toLocaleDateString()}
-              </p>
-            </div>
+                  <p className="mt-2 text-sm text-gray-500">
+                    Posted{" "}
+                    {new Date(
+                      job.publication_date
+                    ).toLocaleDateString()}
+                  </p>
+                </div>
+
+                <div>
+                  <button className="rounded-lg bg-blue-600 px-6 py-3 font-medium text-white hover:bg-blue-700">
+                    Start Interview →
+                  </button>
+                </div>
+              </div>
+            </Link>
           ))}
-
         </div>
-
       </section>
     </main>
   );
