@@ -1,52 +1,23 @@
-import {
-  getApplications,
-  saveApplications,
-} from "./storageService";
+import api from "./api";
 
-import { currentUser } from "./authService";
+export async function applyToJob(jobId, cvFile) {
+  const formData = new FormData();
+  formData.append("cv", cvFile);
 
-export function applyToJob(job) {
-  const user = currentUser();
-
-  if (!user) {
-    throw new Error("Please login first.");
-  }
-
-  const applications = getApplications();
-
-  const exists = applications.find(
-    (a) =>
-      a.userId === user.id &&
-      a.jobId === job.id
-  );
-
-  if (exists) {
-    throw new Error("You have already applied.");
-  }
-
-  applications.push({
-    id: Date.now(),
-    userId: user.id,
-    jobId: job.id,
-    title: job.title,
-    city: job.candidate_required_location,
-    company: job.company_name,
-    appliedAt: new Date().toISOString(),
+  const { data } = await api.post(`/applications/${jobId}`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
   });
 
-  saveApplications(applications);
+  return data;
 }
 
-export function getMyApplications() {
-  const user = currentUser();
-
-  if (!user) return [];
-
-  return getApplications().filter(
-    (a) => a.userId === user.id
-  );
+export async function getMyApplications() {
+  const { data } = await api.get("/applications/mine");
+  return data;
 }
 
-export function getAllApplications() {
-  return getApplications();
+// Admin only
+export async function getAllApplications() {
+  const { data } = await api.get("/applications");
+  return data;
 }
