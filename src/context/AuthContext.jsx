@@ -6,13 +6,16 @@ const AuthContext = createContext();
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(auth.currentUser());
 
-  function login(email, password) {
-    const loggedInUser = auth.login(email, password);
+  async function login(email, password) {
+    const loggedInUser = await auth.login(email, password);
     setUser(loggedInUser);
+    return loggedInUser;
   }
 
-  function register(name, email, password) {
-    return auth.register(name, email, password);
+  async function register(name, email, password) {
+    const newUser = await auth.register(name, email, password);
+    setUser(newUser);
+    return newUser;
   }
 
   function logout() {

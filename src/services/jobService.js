@@ -1,14 +1,21 @@
-import axios from "axios";
+import api from "./api";
 
-const API = "https://remotive.com/api/remote-jobs";
+export async function searchJobs(title = "", city = "") {
+  const { data } = await api.get("/jobs", { params: { title, city } });
+  return data;
+}
 
-export async function searchJobs(title) {
-  const response = await axios.get(API, {
-    params: {
-      search: title,
-      limit: 50,
-    },
-  });
+export async function getJob(id) {
+  const { data } = await api.get(`/jobs/${id}`);
+  return data;
+}
 
-  return response.data.jobs;
+// Admin only
+export async function createJob(job) {
+  const { data } = await api.post("/jobs", job);
+  return data;
+}
+
+export async function deleteJob(id) {
+  await api.delete(`/jobs/${id}`);
 }

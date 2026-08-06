@@ -11,6 +11,13 @@ node_modules
 dist
 dist-ssr
 *.local
+.env
+.env.*
+!.env.example
+
+# Backend uploads (don't commit uploaded CVs)
+backend/uploads/cvs/*
+!backend/uploads/cvs/.gitkeep
 
 # Editor directories and files
 .vscode/*
