@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import Navbar from "../components/Navbar";
 import { searchJobs, createJob, deleteJob } from "../services/jobService";
-import { getAllApplications } from "../services/applicationService";
+import { getAllApplications, submitManualRating } from "../services/applicationService";
 
 // Strip the trailing /api so we can build absolute links to uploaded files
 const FILE_BASE = (import.meta.env.VITE_API_URL || "http://localhost:5000/api").replace(/\/api$/, "");
@@ -22,6 +22,8 @@ export default function Admin() {
   const [form, setForm] = useState(emptyForm);
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState("");
+  const [ratingInputs, setRatingInputs] = useState({}); // { [applicationId]: "7" }
+  const [savingRating, setSavingRating] = useState(null); // applicationId currently saving
 
   async function loadJobs() {
     setJobs(await searchJobs());
@@ -56,6 +58,21 @@ export default function Admin() {
     if (!confirm("Delete this job?")) return;
     await deleteJob(id);
     loadJobs();
+  }
+
+  async function handleSaveRating(applicationId) {
+    const value = ratingInputs[applicationId];
+    if (!value) return;
+
+    try {
+      setSavingRating(applicationId);
+      await submitManualRating(applicationId, { rating: Number(value) });
+      await loadApplications();
+    } catch (err) {
+      alert(err.response?.data?.message || "Could not save rating.");
+    } finally {
+      setSavingRating(null);
+    }
   }
 
   return (
@@ -198,26 +215,68 @@ export default function Admin() {
             {applications.map((app) => (
               <div
                 key={app._id}
-                className="flex items-center justify-between rounded-xl border bg-white p-4 shadow-sm"
+                className="rounded-xl border bg-white p-4 shadow-sm"
               >
-                <div>
-                  <h3 className="font-semibold">{app.job?.title}</h3>
-                  <p className="text-sm text-gray-500">
-                    {app.user?.name} • {app.user?.email}
-                  </p>
-                  <p className="text-xs text-gray-400">
-                    Applied {new Date(app.createdAt).toLocaleDateString()}
-                  </p>
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <h3 className="font-semibold">{app.job?.title}</h3>
+                    <p className="text-sm text-gray-500">
+                      {app.user?.name} • {app.user?.email}
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      Applied {new Date(app.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
+
+                  <div className="flex shrink-0 items-center gap-3">
+                    {typeof app.interviewRating === "number" && (
+                      <span className="rounded-full bg-green-50 px-3 py-1.5 text-sm font-semibold text-green-700">
+                        Rating: {app.interviewRating}/10
+                      </span>
+                    )}
+
+                    <a
+                      href={`${FILE_BASE}${app.cvUrl}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                    >
+                      View CV
+                    </a>
+                  </div>
                 </div>
 
-                <a
-                  href={`${FILE_BASE}${app.cvUrl}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-                >
-                  View CV
-                </a>
+                {app.interviewSummary && (
+                  <div className="mt-3 rounded-lg bg-gray-50 p-3 text-sm text-gray-600">
+                    <strong>Interview summary:</strong> {app.interviewSummary}
+                  </div>
+                )}
+
+                {typeof app.interviewRating !== "number" && (
+                  <div className="mt-3 flex items-center gap-2 border-t pt-3">
+                    <span className="text-xs text-gray-400">
+                      No interview rating yet — enter manually:
+                    </span>
+                    <input
+                      type="number"
+                      min="1"
+                      max="10"
+                      placeholder="1-10"
+                      value={ratingInputs[app._id] || ""}
+                      onChange={(e) =>
+                        setRatingInputs({ ...ratingInputs, [app._id]: e.target.value })
+                      }
+                      className="w-20 rounded-lg border px-2 py-1 text-sm"
+                    />
+                    <button
+                      onClick={() => handleSaveRating(app._id)}
+                      disabled={savingRating === app._id}
+                      className="rounded-lg bg-gray-800 px-3 py-1 text-sm font-medium text-white hover:bg-gray-900 disabled:opacity-60"
+                    >
+                      {savingRating === app._id ? "Saving..." : "Save"}
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
 

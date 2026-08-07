@@ -10,6 +10,7 @@ const applicationSchema = new mongoose.Schema(
     // Filled in later by the HeyGen webhook once the interview ends
     interviewSummary: String,
     interviewAudioUrl: String,
+    interviewRating: Number, // e.g. 1-10, whatever scale HeyGen/your scoring gives back
 
     status: {
       type: String,
