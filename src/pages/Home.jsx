@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   HiOutlineMagnifyingGlass,
   HiOutlineMapPin,
@@ -12,6 +12,7 @@ import { useAuth } from "../context/AuthContext";
 
 export default function Home() {
   const { isLoggedIn } = useAuth();
+  const navigate = useNavigate();
 
   const [title, setTitle] = useState("");
   const [city, setCity] = useState("");
@@ -44,9 +45,11 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function openApply(job) {
+  // Clicking a job (card or button) — not logged in? straight to login,
+  // and bring them back here afterward. Logged in? open the apply modal.
+  function handleJobClick(job) {
     if (!isLoggedIn) {
-      alert("Please login to apply.");
+      navigate("/login", { state: { from: "/" } });
       return;
     }
     setApplyJob(job);
@@ -64,9 +67,18 @@ export default function Home() {
     try {
       setApplying(true);
       setApplyError("");
-      await applyToJob(applyJob._id, cvFile);
+
+      const application = await applyToJob(applyJob._id, cvFile);
       setAppliedIds((prev) => [...prev, applyJob._id]);
+
+      const job = applyJob;
       setApplyJob(null);
+
+      // Straight into the interview, carrying the application id so the
+      // HeyGen webhook can later attach the rating/summary to it.
+      navigate(`/interview/${job._id}`, {
+        state: { job, applicationId: application._id },
+      });
     } catch (err) {
       setApplyError(err.response?.data?.message || "Could not submit application.");
     } finally {
@@ -143,9 +155,11 @@ export default function Home() {
 
         <div className="space-y-5">
           {jobs.map((job) => (
-            <div
+            <button
               key={job._id}
-              className="rounded-xl border bg-white p-6 shadow-sm transition duration-200 hover:border-blue-600 hover:shadow-lg"
+              onClick={() => handleJobClick(job)}
+              disabled={appliedIds.includes(job._id)}
+              className="w-full rounded-xl border bg-white p-6 text-left shadow-sm transition duration-200 hover:border-blue-600 hover:shadow-lg disabled:cursor-default disabled:opacity-60"
             >
               <div className="flex items-center justify-between gap-6">
                 <div>
@@ -158,25 +172,11 @@ export default function Home() {
                   </p>
                 </div>
 
-                <div className="flex shrink-0 gap-3">
-                  <button
-                    onClick={() => openApply(job)}
-                    disabled={appliedIds.includes(job._id)}
-                    className="rounded-lg border border-blue-600 px-6 py-3 font-medium text-blue-600 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {appliedIds.includes(job._id) ? "Applied ✓" : "Apply"}
-                  </button>
-
-                  <Link
-                    to={`/interview/${job._id}`}
-                    state={{ job }}
-                    className="rounded-lg bg-blue-600 px-6 py-3 font-medium text-white hover:bg-blue-700"
-                  >
-                    Start Interview →
-                  </Link>
-                </div>
+                <span className="shrink-0 rounded-lg bg-blue-600 px-6 py-3 font-medium text-white">
+                  {appliedIds.includes(job._id) ? "Applied ✓" : "Apply Now →"}
+                </span>
               </div>
-            </div>
+            </button>
           ))}
         </div>
       </section>
@@ -188,6 +188,10 @@ export default function Home() {
             <h3 className="text-xl font-bold">Apply to {applyJob.title}</h3>
             <p className="mt-1 text-sm text-gray-500">
               {applyJob.company} • {applyJob.city}
+            </p>
+            <p className="mt-3 text-sm text-gray-500">
+              After you submit your CV, you'll go straight into a short AI
+              interview for this role.
             </p>
 
             <form onSubmit={handleApplySubmit} className="mt-6 space-y-4">
@@ -223,7 +227,7 @@ export default function Home() {
                   disabled={applying}
                   className="flex-1 rounded-lg bg-blue-600 py-2.5 font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
                 >
-                  {applying ? "Submitting..." : "Submit Application"}
+                  {applying ? "Submitting..." : "Submit & Start Interview"}
                 </button>
               </div>
             </form>
