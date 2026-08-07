@@ -3,7 +3,8 @@ import Navbar from "../components/Navbar";
 
 // TODO: replace with your own HeyGen avatar embed URL once your account
 // and free avatar are set up.
-const AVATAR_EMBED_BASE = "https://embed.liveavatar.com/v1/ade12521-d2c3-45eb-aedf-8674530ca241";
+const AVATAR_EMBED_BASE =
+  "https://embed.liveavatar.com/v1/e0121a56-ae50-4045-a182-056cf8718f16";
 
 export default function Interview() {
   const { id } = useParams();
@@ -57,8 +58,8 @@ export default function Interview() {
             )}
 
             <p className="mt-4 text-gray-600">
-              Speak naturally with the AI interviewer. It will ask
-              questions related to this job.
+              Speak naturally with the AI interviewer. It will ask questions
+              related to this job.
             </p>
 
             <div className="mt-8 rounded-xl bg-gray-100 p-5">
@@ -69,9 +70,9 @@ export default function Interview() {
                 <li>Answer each question naturally.</li>
                 <li>The interview will continue automatically.</li>
                 <li>
-                  When you're done, your rating and summary will appear on
-                  your application shortly — the admin will also see it
-                  alongside your CV.
+                  When you're done, your rating and summary will appear on your
+                  application shortly — the admin will also see it alongside
+                  your CV.
                 </li>
               </ul>
             </div>
