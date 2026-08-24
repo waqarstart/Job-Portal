@@ -16,13 +16,61 @@ import hrRoutes from "./routes/hrRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 
 dotenv.config();
+
 connectDB();
 
 const app = express();
 
-app.use(cors());
+// =========================
+// CORS CONFIGURATION
+// =========================
+
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://job-portal-frontend-blue-zeta.vercel.app",
+];
+
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      // Allow requests without an origin
+      // (Postman, server-to-server requests, etc.)
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(
+        new Error(`CORS blocked request from origin: ${origin}`)
+      );
+    },
+
+    credentials: true,
+  })
+);
+
+// =========================
+// MIDDLEWARE
+// =========================
+
 app.use(express.json());
-app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
+app.use(express.urlencoded({ extended: true }));
+
+// =========================
+// STATIC UPLOADS
+// =========================
+
+app.use(
+  "/uploads",
+  express.static(path.join(process.cwd(), "uploads"))
+);
+
+// =========================
+// API ROUTES
+// =========================
 
 app.use("/api/auth", authRoutes);
 app.use("/api/jobs", jobRoutes);
@@ -35,7 +83,20 @@ app.use("/api/cvs", cvRoutes);
 app.use("/api/hr", hrRoutes);
 app.use("/api/admin", adminRoutes);
 
-app.get("/", (req, res) => res.send("Job Portal API is running."));
+// =========================
+// ROOT
+// =========================
+
+app.get("/", (req, res) => {
+  res.send("Job Portal API is running.");
+});
+
+// =========================
+// START SERVER
+// =========================
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});

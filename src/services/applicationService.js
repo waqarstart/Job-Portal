@@ -1,12 +1,27 @@
 import api from "./api";
 
-export async function applyToJob(jobId, cvFile) {
+export async function applyToJob(jobId, cvFile = null, cvId = null) {
   const formData = new FormData();
-  formData.append("cv", cvFile);
 
-  const { data } = await api.post(`/applications/${jobId}`, formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
+  // New uploaded CV
+  if (cvFile) {
+    formData.append("cv", cvFile);
+  }
+
+  // Existing saved CV
+  if (cvId) {
+    formData.append("cvId", cvId);
+  }
+
+  const { data } = await api.post(
+    `/applications/${jobId}`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }
+  );
 
   return data;
 }
@@ -23,33 +38,52 @@ export async function getAllApplications() {
 }
 
 // Admin only — fallback/manual entry if the real HeyGen webhook isn't
-// wired up yet (same effect as the webhook, triggered by hand)
-export async function submitManualRating(applicationId, { rating, summary, audio_url }) {
-  const { data } = await api.post(`/interview/manual-rating/${applicationId}`, {
-    rating,
-    summary,
-    audio_url,
-  });
+// wired up yet
+export async function submitManualRating(
+  applicationId,
+  { rating, summary, audio_url }
+) {
+  const { data } = await api.post(
+    `/interview/manual-rating/${applicationId}`,
+    {
+      rating,
+      summary,
+      audio_url,
+    }
+  );
+
   return data;
 }
 
-// Candidate-facing — leave a note on your own application when the live
-// avatar isn't available (does not set a rating, admin-only for that)
-export async function candidateFinishInterview(applicationId, summary) {
-  const { data } = await api.post(`/interview/candidate-note/${applicationId}`, { summary });
+// Candidate-facing
+export async function candidateFinishInterview(
+  applicationId,
+  summary
+) {
+  const { data } = await api.post(
+    `/interview/candidate-note/${applicationId}`,
+    {
+      summary,
+    }
+  );
+
   return data;
 }
 
-// Start a real LiveAvatar session for this application (Sandbox Mode —
-// no credits used). Returns { url } — a freshly created embed URL.
+// Start a real LiveAvatar session
 export async function startInterviewSession(applicationId) {
-  const { data } = await api.post(`/interview/start/${applicationId}`);
+  const { data } = await api.post(
+    `/interview/start/${applicationId}`
+  );
+
   return data;
 }
 
-// Called once the interview ends — pulls the transcript from LiveAvatar
-// and stores it as the interview summary.
+// Called once interview ends
 export async function finishInterviewSession(applicationId) {
-  const { data } = await api.post(`/interview/finish/${applicationId}`);
+  const { data } = await api.post(
+    `/interview/finish/${applicationId}`
+  );
+
   return data;
 }

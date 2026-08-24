@@ -5,6 +5,7 @@ import fs from "fs";
 
 import Application from "../models/Application.js";
 import Job from "../models/Job.js";
+import CV from "../models/CV.js";
 
 import {
   requireAuth,
@@ -18,6 +19,11 @@ import {
 
 const router = express.Router();
 
+
+// ─────────────────────────────────────────────────────────────
+// Application CV upload directory
+// ─────────────────────────────────────────────────────────────
+
 const uploadDir = path.join(
   process.cwd(),
   "uploads",
@@ -25,6 +31,11 @@ const uploadDir = path.join(
 );
 
 fs.mkdirSync(uploadDir, { recursive: true });
+
+
+// ─────────────────────────────────────────────────────────────
+// Multer configuration
+// ─────────────────────────────────────────────────────────────
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) =>
@@ -69,18 +80,29 @@ const upload = multer({
   },
 });
 
-// Apply to a job with a CV upload
+
+// ─────────────────────────────────────────────────────────────
+// Apply to a job
+//
+// Supports:
+//
+// 1. New uploaded CV
+//    form field: cv
+//
+// 2. Saved CV from CV library
+//    form field: cvId
+// ─────────────────────────────────────────────────────────────
+
 router.post(
   "/:jobId",
   requireAuth,
   upload.single("cv"),
   async (req, res) => {
     try {
-      if (!req.file) {
-        return res.status(400).json({
-          message: "A CV file is required.",
-        });
-      }
+
+      // ───────────────────────────────────────────────────────
+      // Check whether user already applied
+      // ───────────────────────────────────────────────────────
 
       const existing = await Application.findOne({
         job: req.params.jobId,
@@ -88,21 +110,134 @@ router.post(
       });
 
       if (existing) {
+        // If a new CV was uploaded but application already exists,
+        // remove the unnecessary uploaded file.
+        if (req.file?.path && fs.existsSync(req.file.path)) {
+          fs.unlinkSync(req.file.path);
+        }
+
         return res.status(400).json({
           message:
             "You have already applied to this job.",
         });
       }
 
+
+      // ───────────────────────────────────────────────────────
+      // Find job
+      // ───────────────────────────────────────────────────────
+
       const job = await Job.findById(
         req.params.jobId
       );
 
       if (!job) {
+
+        if (req.file?.path && fs.existsSync(req.file.path)) {
+          fs.unlinkSync(req.file.path);
+        }
+
         return res.status(404).json({
           message: "Job not found.",
         });
       }
+
+
+      // ───────────────────────────────────────────────────────
+      // Determine which CV is being used
+      // ───────────────────────────────────────────────────────
+
+      let cvFilePath = null;
+      let cvOriginalName = null;
+      let cvUrl = null;
+
+
+      // =======================================================
+      // OPTION 1: NEWLY UPLOADED CV
+      // =======================================================
+
+      if (req.file) {
+
+        cvFilePath = req.file.path;
+
+        cvOriginalName =
+          req.file.originalname;
+
+        cvUrl =
+          `/uploads/cvs/${req.file.filename}`;
+      }
+
+
+      // =======================================================
+      // OPTION 2: SAVED CV
+      // =======================================================
+
+      else if (req.body.cvId) {
+
+        const savedCV = await CV.findOne({
+          _id: req.body.cvId,
+          user: req.user.id,
+        });
+
+        if (!savedCV) {
+          return res.status(404).json({
+            message:
+              "Saved CV not found or you do not have access to it.",
+          });
+        }
+
+
+        // savedCV.url looks like:
+        //
+        // /uploads/cvs-library/filename.pdf
+        //
+        // Convert it to the actual path on disk.
+
+        cvFilePath = path.join(
+          process.cwd(),
+          savedCV.url
+        );
+
+        cvOriginalName =
+          savedCV.originalName;
+
+        cvUrl =
+          savedCV.url;
+
+
+        // Make sure the physical file actually exists
+
+        if (!fs.existsSync(cvFilePath)) {
+
+          console.error(
+            "Saved CV file does not exist:",
+            cvFilePath
+          );
+
+          return res.status(404).json({
+            message:
+              "The saved CV file could not be found on the server.",
+          });
+        }
+      }
+
+
+      // =======================================================
+      // No CV supplied
+      // =======================================================
+
+      else {
+
+        return res.status(400).json({
+          message:
+            "A CV file or saved CV is required.",
+        });
+      }
+
+
+      // ───────────────────────────────────────────────────────
+      // AI CV Evaluation
+      // ───────────────────────────────────────────────────────
 
       let cvRating = null;
       let cvMatchSummary = "";
@@ -110,22 +245,44 @@ router.post(
       let cvMissingSkills = [];
       let cvEvaluationStatus = "pending";
 
+
       try {
+
         console.log(
-          `Extracting CV: ${req.file.originalname}`
+          `Extracting CV: ${cvOriginalName}`
         );
 
-        const cvText = await extractCvText(
-          req.file.path
+        console.log(
+          `CV file path: ${cvFilePath}`
         );
+
+
+        // Extract text from either:
+        //
+        // - newly uploaded CV
+        // - saved CV
+        //
+        // Both use exactly the same extractor.
+
+        const cvText =
+          await extractCvText(
+            cvFilePath
+          );
+
 
         console.log(
           `CV extracted: ${cvText.length} characters`
         );
 
+
+        // ─────────────────────────────────────────────
+        // Evaluate CV against job using OpenRouter
+        // ─────────────────────────────────────────────
+
         console.log(
           `Evaluating CV against job: ${job.title}`
         );
+
 
         const evaluation =
           await evaluateCvAgainstJob({
@@ -134,8 +291,10 @@ router.post(
             jobDescription:
               job.description,
 
-            jobTitle: job.title,
+            jobTitle:
+              job.title,
           });
+
 
         cvRating =
           evaluation.rating;
@@ -152,29 +311,39 @@ router.post(
         cvEvaluationStatus =
           "completed";
 
+
         console.log(
           `CV evaluation completed: ${cvRating}/100`
         );
+
       } catch (evaluationError) {
+
         console.error(
           "CV evaluation failed:",
           evaluationError
         );
 
-        cvEvaluationStatus = "failed";
+        cvEvaluationStatus =
+          "failed";
       }
+
+
+      // ───────────────────────────────────────────────────────
+      // Create application
+      // ───────────────────────────────────────────────────────
 
       const application =
         await Application.create({
-          job: req.params.jobId,
 
-          user: req.user.id,
+          job:
+            req.params.jobId,
 
-          cvUrl:
-            `/uploads/cvs/${req.file.filename}`,
+          user:
+            req.user.id,
 
-          cvOriginalName:
-            req.file.originalname,
+          cvUrl,
+
+          cvOriginalName,
 
           cvRating,
 
@@ -187,13 +356,41 @@ router.post(
           cvEvaluationStatus,
         });
 
-      res.status(201).json(application);
+
+      // ───────────────────────────────────────────────────────
+      // Response
+      // ───────────────────────────────────────────────────────
+
+      res.status(201).json(
+        application
+      );
+
     } catch (err) {
+
       console.error(
         "Application creation error:",
         err
       );
 
+
+      // If multer uploaded a file but something
+      // failed later, clean it up.
+
+      if (
+        req.file?.path &&
+        fs.existsSync(req.file.path)
+      ) {
+        try {
+          fs.unlinkSync(req.file.path);
+        } catch (cleanupError) {
+          console.error(
+            "Failed to clean up uploaded CV:",
+            cleanupError
+          );
+        }
+      }
+
+
       res.status(500).json({
         message: err.message,
       });
@@ -201,21 +398,32 @@ router.post(
   }
 );
 
+
+// ─────────────────────────────────────────────────────────────
 // Logged-in user: their own applications
+// ─────────────────────────────────────────────────────────────
+
 router.get(
   "/mine",
   requireAuth,
   async (req, res) => {
+
     try {
+
       const apps =
         await Application.find({
           user: req.user.id,
         })
           .populate("job")
-          .sort({ createdAt: -1 });
+          .sort({
+            createdAt: -1,
+          });
+
 
       res.json(apps);
+
     } catch (err) {
+
       res.status(500).json({
         message: err.message,
       });
@@ -223,13 +431,19 @@ router.get(
   }
 );
 
+
+// ─────────────────────────────────────────────────────────────
 // Admin only: every application
+// ─────────────────────────────────────────────────────────────
+
 router.get(
   "/",
   requireAuth,
   requireAdmin,
   async (req, res) => {
+
     try {
+
       const apps =
         await Application.find()
           .populate("job")
@@ -237,15 +451,21 @@ router.get(
             "user",
             "name email"
           )
-          .sort({ createdAt: -1 });
+          .sort({
+            createdAt: -1,
+          });
+
 
       res.json(apps);
+
     } catch (err) {
+
       res.status(500).json({
         message: err.message,
       });
     }
   }
 );
+
 
 export default router;
