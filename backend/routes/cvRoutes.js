@@ -3,6 +3,8 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import CV from "../models/CV.js";
+import Application from "../models/Application.js";
+import User from "../models/User.js";
 import { requireAuth } from "../middleware/auth.js";
 
 const router = express.Router();
@@ -29,7 +31,7 @@ const upload = multer({
   },
 });
 
-const MAX_CVS = 5;
+const MAX_CVS = 10;
 
 // List all my CVs
 router.get("/", requireAuth, async (req, res) => {
@@ -41,7 +43,51 @@ router.get("/", requireAuth, async (req, res) => {
   }
 });
 
-// Upload a new CV (max 5 total)
+// Stats for the Resume/CV dashboard (totals, primary, applications, profile views)
+router.get("/stats", requireAuth, async (req, res) => {
+  try {
+    const cvs = await CV.find({ user: req.user.id });
+    const cvUrls = cvs.map((cv) => cv.url);
+
+    const applicationsUsingCVs = await Application.countDocuments({
+      user: req.user.id,
+      cvUrl: { $in: cvUrls },
+    });
+
+    const user = await User.findById(req.user.id).select("profileViews");
+
+    res.json({
+      totalCVs: cvs.length,
+      maxCVs: MAX_CVS,
+      primaryCV: cvs.filter((cv) => cv.isPrimary).length,
+      applicationsUsingCVs,
+      profileViews: user?.profileViews || 0,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Applications count per CV (used to show "Used In" in the CV table)
+router.get("/usage", requireAuth, async (req, res) => {
+  try {
+    const cvs = await CV.find({ user: req.user.id });
+
+    const usage = {};
+    for (const cv of cvs) {
+      usage[cv._id] = await Application.countDocuments({
+        user: req.user.id,
+        cvUrl: cv.url,
+      });
+    }
+
+    res.json(usage);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Upload a new CV (max 10 total)
 router.post("/", requireAuth, upload.single("cv"), async (req, res) => {
   try {
     if (!req.file) {
@@ -89,6 +135,23 @@ router.put("/:id", requireAuth, upload.single("cv"), async (req, res) => {
     }
 
     await cv.save();
+    res.json(cv);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Set a CV as the primary CV (unsets any previous primary)
+router.patch("/:id/primary", requireAuth, async (req, res) => {
+  try {
+    const cv = await CV.findOne({ _id: req.params.id, user: req.user.id });
+    if (!cv) return res.status(404).json({ message: "CV not found." });
+
+    await CV.updateMany({ user: req.user.id }, { $set: { isPrimary: false } });
+
+    cv.isPrimary = true;
+    await cv.save();
+
     res.json(cv);
   } catch (err) {
     res.status(500).json({ message: err.message });

@@ -7,6 +7,7 @@ const cvSchema = new mongoose.Schema(
     url: { type: String, required: true },
     label: { type: String, default: "" }, // user-editable friendly name
     locked: { type: Boolean, default: false },
+    isPrimary: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

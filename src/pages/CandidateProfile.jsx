@@ -9,6 +9,7 @@ import {
 } from "react-icons/hi2";
 import CandidateLayout from "../layouts/CandidateLayout";
 import { getMyProfile, updateMyProfile, uploadProfilePicture } from "../services/userService";
+import { setCachedProfilePicture } from "../utils/profileCache";
 
 const FILE_BASE = (import.meta.env.VITE_API_URL || "http://localhost:5000/api").replace(/\/api$/, "");
 const EDUCATION_LEVELS = ["School", "Intermediate", "Undergraduate", "Master", "PhD"];
@@ -55,6 +56,7 @@ export default function CandidateProfile() {
   async function loadProfile() {
     const d = await getMyProfile();
     setProfile(d);
+    setCachedProfilePicture(d?.profilePicture || "");
   }
 
   async function save(updates) {
@@ -78,6 +80,7 @@ export default function CandidateProfile() {
     try {
       const updated = await uploadProfilePicture(file);
       setProfile(updated);
+      setCachedProfilePicture(updated?.profilePicture || "");
     } catch (err) {
       alert(err.response?.data?.message || "Could not upload picture.");
     } finally {

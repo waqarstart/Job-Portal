@@ -26,7 +26,7 @@ const navItems = [
   { to: "/hr/settings", label: "Settings", icon: HiOutlineCog6Tooth },
 ];
 
-export default function HRLayout({ children, title }) {
+export default function HRLayout({ children, title, subtitle, headerExtra }) {
   const { user, logout } = useAuth();
   const location = useLocation();
   const [notifications, setNotifications] = useState([]);
@@ -83,9 +83,13 @@ export default function HRLayout({ children, title }) {
 
       <div className="flex flex-1 flex-col overflow-hidden">
         <header className="flex shrink-0 items-center justify-between border-b bg-white px-8 py-4">
-          <h1 className="text-xl font-bold text-gray-900">{title || "HR Dashboard"}</h1>
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">{title || "HR Dashboard"}</h1>
+            {subtitle && <p className="text-sm text-gray-500 mt-0.5">{subtitle}</p>}
+          </div>
 
           <div className="flex items-center gap-3">
+            {headerExtra}
             <NotificationMenu notifications={notifications} />
             <UserMenu
               user={user}

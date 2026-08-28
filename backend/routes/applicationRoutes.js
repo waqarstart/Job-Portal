@@ -10,6 +10,7 @@ import CV from "../models/CV.js";
 import {
   requireAuth,
   requireAdmin,
+  requireHR,
 } from "../middleware/auth.js";
 
 import { extractCvText } from "../services/cvExtractor.js";
@@ -398,6 +399,45 @@ router.post(
   }
 );
 
+
+// ─────────────────────────────────────────────────────────────
+// HR/Admin: schedule, complete, or cancel an interview
+// ─────────────────────────────────────────────────────────────
+
+router.patch("/:id/interview", requireAuth, requireHR, async (req, res) => {
+  try {
+    const {
+      interviewDate,
+      interviewDurationMinutes,
+      interviewType,
+      interviewMode,
+      interviewLocationDetail,
+      interviewerCount,
+      interviewStatus,
+      interviewCancelReason,
+    } = req.body;
+
+    const application = await Application.findById(req.params.id);
+    if (!application) {
+      return res.status(404).json({ message: "Application not found." });
+    }
+
+    if (interviewDate !== undefined) application.interviewDate = interviewDate;
+    if (interviewDurationMinutes !== undefined) application.interviewDurationMinutes = interviewDurationMinutes;
+    if (interviewType !== undefined) application.interviewType = interviewType;
+    if (interviewMode !== undefined) application.interviewMode = interviewMode;
+    if (interviewLocationDetail !== undefined) application.interviewLocationDetail = interviewLocationDetail;
+    if (interviewerCount !== undefined) application.interviewerCount = interviewerCount;
+    if (interviewStatus !== undefined) application.interviewStatus = interviewStatus;
+    if (interviewCancelReason !== undefined) application.interviewCancelReason = interviewCancelReason;
+
+    await application.save();
+
+    res.json(application);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 
 // ─────────────────────────────────────────────────────────────
 // Logged-in user: their own applications

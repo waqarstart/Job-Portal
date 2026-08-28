@@ -1,16 +1,21 @@
 import { useState, useRef, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { getMyProfile } from "../services/userService";
+import { getCachedProfilePicture, setCachedProfilePicture } from "../utils/profileCache";
 import {
   HiOutlineBell, HiOutlineLanguage, HiOutlineLockClosed,
   HiOutlineArrowRightOnRectangle, HiChevronDown, HiChevronUp,
 } from "react-icons/hi2";
+
+const FILE_BASE = (import.meta.env.VITE_API_URL || "http://localhost:5000/api").replace(/\/api$/, "");
 
 export default function Navbar() {
   const { user, logout } = useAuth();
   const location  = useLocation();
   const navigate  = useNavigate();
   const [open, setOpen] = useState(false);
+  const [profilePicture, setProfilePicture] = useState(getCachedProfilePicture() || "");
   const ref = useRef(null);
 
   // Close dropdown on outside click
@@ -21,6 +26,24 @@ export default function Navbar() {
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
+
+  // Candidates ("user" role) have a profile picture — HR/Admin accounts
+  // don't have this endpoint, so failures here are expected and just fall
+  // back to initials.
+  useEffect(() => {
+    if (!user || user.role !== "user") {
+      setProfilePicture("");
+      return;
+    }
+
+    getMyProfile()
+      .then((profile) => {
+        const pic = profile?.profilePicture || "";
+        setProfilePicture(pic);
+        setCachedProfilePicture(pic);
+      })
+      .catch(() => setProfilePicture(""));
+  }, [user]);
 
   function navClass(path) {
     return `text-sm font-medium transition ${
@@ -83,8 +106,12 @@ export default function Navbar() {
                 onClick={() => setOpen((o) => !o)}
                 className="flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50 py-1 pl-1 pr-3 hover:bg-gray-100 transition"
               >
-                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">
-                  {initial}
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-blue-600 text-xs font-bold text-white">
+                  {profilePicture ? (
+                    <img src={`${FILE_BASE}${profilePicture}`} alt="Profile" className="h-full w-full object-cover" />
+                  ) : (
+                    initial
+                  )}
                 </div>
                 <span className="text-sm font-semibold text-gray-700 hidden sm:block">{user.name}</span>
                 {open
@@ -98,8 +125,12 @@ export default function Navbar() {
 
                   {/* User info */}
                   <div className="flex items-center gap-3 px-4 py-4 border-b border-gray-100">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-600 text-base font-bold text-white">
-                      {initial}
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-blue-600 text-base font-bold text-white">
+                      {profilePicture ? (
+                        <img src={`${FILE_BASE}${profilePicture}`} alt="Profile" className="h-full w-full object-cover" />
+                      ) : (
+                        initial
+                      )}
                     </div>
                     <div className="min-w-0">
                       <p className="text-sm font-bold text-gray-900 truncate">{user.name}</p>

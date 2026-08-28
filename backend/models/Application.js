@@ -38,6 +38,19 @@ const applicationSchema = new mongoose.Schema(
     interviewAudioUrl: String,
     interviewRating: Number,
 
+    // Interview scheduling (set by HR)
+    interviewDate: Date,
+    interviewDurationMinutes: Number,
+    interviewType: String, // e.g. "Technical Round", "Technical + HR Round"
+    interviewMode: { type: String, default: "Online" }, // "Online" | "On-site"
+    interviewLocationDetail: String, // e.g. "Google Meet" or "Office - Lahore"
+    interviewerCount: { type: Number, default: 1 },
+    interviewStatus: {
+      type: String,
+      enum: ["pending", "completed", "cancelled"],
+    },
+    interviewCancelReason: String,
+
     // LiveAvatar
     liveAvatarSessionId: String,
 
@@ -49,11 +62,19 @@ const applicationSchema = new mongoose.Schema(
         "under_review",
         "shortlisted",
         "interviewed",
+        "offered",
         "selected",
         "hired",
         "rejected",
       ],
       default: "applied",
+    },
+
+    // Where the candidate applied from (used for HR analytics)
+    source: {
+      type: String,
+      enum: ["Company Website", "LinkedIn", "Indeed", "Referral", "Other"],
+      default: "Company Website",
     },
   },
   {

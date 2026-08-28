@@ -1,13 +1,13 @@
 import api from "./api";
 
-export async function getHRDashboard() {
-  const { data } = await api.get("/hr/dashboard");
+export async function getHRDashboard(period = "month") {
+  const { data } = await api.get("/hr/dashboard", { params: { period } });
   return data;
 }
 
 // Jobs
-export async function getHRJobs() {
-  const { data } = await api.get("/hr/jobs");
+export async function getHRJobs(params = {}) {
+  const { data } = await api.get("/hr/jobs", { params });
   return data;
 }
 
@@ -39,6 +39,11 @@ export async function updateApplicantStatus(id, status) {
 // Interviews
 export async function getHRInterviews() {
   const { data } = await api.get("/hr/interviews");
+  return data;
+}
+
+export async function getSchedulableApplicants() {
+  const { data } = await api.get("/hr/interviews/schedulable");
   return data;
 }
 

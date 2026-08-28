@@ -33,6 +33,21 @@ export async function toggleCVLock(id) {
   return data;
 }
 
+export async function setPrimaryCV(id) {
+  const { data } = await api.patch(`/cvs/${id}/primary`);
+  return data;
+}
+
+export async function getCVStats() {
+  const { data } = await api.get("/cvs/stats");
+  return data;
+}
+
+export async function getCVUsage() {
+  const { data } = await api.get("/cvs/usage");
+  return data;
+}
+
 export async function deleteCV(id) {
   await api.delete(`/cvs/${id}`);
 }

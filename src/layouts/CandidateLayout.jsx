@@ -15,6 +15,8 @@ import { useAuth } from "../context/AuthContext";
 import UserMenu from "../components/UserMenu";
 import NotificationMenu from "../components/NotificationMenu";
 import { getMyApplications } from "../services/applicationService";
+import { getMyProfile } from "../services/userService";
+import { getCachedProfilePicture, setCachedProfilePicture } from "../utils/profileCache";
 
 const FILE_BASE = (import.meta.env.VITE_API_URL || "http://localhost:5000/api").replace(/\/api$/, "");
 
@@ -34,7 +36,13 @@ export default function CandidateLayout({ children, title, profilePicture: picPr
   const { user, logout } = useAuth();
   const location = useLocation();
   const [notifications, setNotifications] = useState([]);
-  const [profilePicture, setProfilePicture] = useState(picProp || user?.profilePicture || "");
+
+  // Initialize from (in order): the live-preview prop, the module-level
+  // cache from a previous page's fetch, or empty. This lets every new page
+  // render the correct avatar immediately — no loading flash on navigation.
+  const cached = getCachedProfilePicture();
+  const [profilePicture, setProfilePicture] = useState(picProp || cached || "");
+  const [picLoading, setPicLoading] = useState(!picProp && cached === null);
 
   const initials = (user?.name || "?")
     .split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
@@ -54,10 +62,26 @@ export default function CandidateLayout({ children, title, profilePicture: picPr
       .catch(() => {});
   }, []);
 
-  // Pick up profile picture from prop or user object
+  // Pick up profile picture from prop (live preview while editing), or
+  // fetch/re-validate the candidate's current profile in the background so
+  // the sidebar avatar stays accurate on every page.
   useEffect(() => {
-    if (picProp) setProfilePicture(picProp);
-    else if (user?.profilePicture) setProfilePicture(user.profilePicture);
+    if (picProp) {
+      setProfilePicture(picProp);
+      setPicLoading(false);
+      return;
+    }
+
+    getMyProfile()
+      .then((profile) => {
+        const pic = profile?.profilePicture || "";
+        setProfilePicture(pic);
+        setCachedProfilePicture(pic);
+      })
+      .catch(() => {
+        if (user?.profilePicture) setProfilePicture(user.profilePicture);
+      })
+      .finally(() => setPicLoading(false));
   }, [picProp, user]);
 
   return (
@@ -72,7 +96,9 @@ export default function CandidateLayout({ children, title, profilePicture: picPr
 
         {/* Profile pic in sidebar — updates when candidate uploads */}
         <div className="mx-4 flex items-center gap-3 rounded-xl bg-gray-50 p-3">
-          {profilePicture ? (
+          {picLoading ? (
+            <div className="h-9 w-9 shrink-0 rounded-full bg-gray-200 animate-pulse" />
+          ) : profilePicture ? (
             <img
               src={`${FILE_BASE}${profilePicture}`}
               alt="Profile"

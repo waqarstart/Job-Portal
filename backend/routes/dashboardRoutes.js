@@ -29,8 +29,12 @@ router.get("/candidate", requireAuth, async (req, res) => {
     const [user, applications, savedJobs] = await Promise.all([
       User.findById(req.user.id),
       Application.find({ user: req.user.id }).populate("job").sort({ createdAt: -1 }),
-      SavedJob.find({ user: req.user.id }),
+      SavedJob.find({ user: req.user.id }).populate("job"),
     ]);
+
+    // A saved job whose underlying job was deleted comes back with job: null —
+    // don't count those toward the "Saved Jobs" stat.
+    const validSavedJobs = savedJobs.filter((s) => s.job);
 
     const pipeline = {
       applied: 0,
@@ -50,7 +54,7 @@ router.get("/candidate", requireAuth, async (req, res) => {
     res.json({
       stats: {
         applications: applications.length,
-        savedJobs: savedJobs.length,
+        savedJobs: validSavedJobs.length,
         interviewsPending: pendingInterviews.length,
         profileViews: user.profileViews || 0,
       },

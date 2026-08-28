@@ -87,3 +87,12 @@ export async function finishInterviewSession(applicationId) {
 
   return data;
 }
+// HR/Admin: schedule, complete, or cancel an interview
+export async function scheduleInterview(applicationId, payload) {
+  const { data } = await api.patch(
+    `/applications/${applicationId}/interview`,
+    payload
+  );
+
+  return data;
+}

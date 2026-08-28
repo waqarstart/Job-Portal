@@ -100,6 +100,30 @@ function FilterSection({ title, options, counts, selected, onToggle }) {
 }
 
 // ── Right panel ─────────────────────────────────────────────────────────────
+async function shareJob(job) {
+  const shareData = {
+    title: job?.title ? `${job.title} — ${job.company}` : "Job listing",
+    text: job?.title ? `Check out this job: ${job.title} at ${job.company}` : "Check out this job",
+    url: `${window.location.origin}/jobs/${job._id}`,
+  };
+
+  try {
+    if (navigator.share) {
+      await navigator.share(shareData);
+      return;
+    }
+  } catch (err) {
+    // user cancelled — fall through to clipboard
+  }
+
+  try {
+    await navigator.clipboard.writeText(shareData.url);
+    alert("Job link copied to clipboard!");
+  } catch (err) {
+    console.error("Failed to copy link:", err);
+  }
+}
+
 function JobPanel({ job, saved, onSave, onApply, onClose }) {
   if (!job) return (
     <div className="flex h-full items-center justify-center rounded-2xl border border-gray-100 bg-white shadow-sm">
@@ -183,7 +207,11 @@ function JobPanel({ job, saved, onSave, onApply, onClose }) {
             className="flex-1 rounded-xl bg-blue-600 py-2 text-sm font-bold text-white hover:bg-blue-700 transition">
             Apply Now
           </button>
-          <button className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-200 text-gray-400 hover:bg-gray-50 transition">
+          <button
+            onClick={() => shareJob(job)}
+            title="Share this job"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-200 text-gray-400 hover:bg-gray-50 transition"
+          >
             <HiOutlineShare className="h-4 w-4" />
           </button>
         </div>

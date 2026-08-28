@@ -8,7 +8,7 @@ const router = express.Router();
 router.get("/", async (req, res) => {
   try {
     const { title = "", city = "" } = req.query;
-    const filter = {};
+    const filter = { status: "active" };
 
     if (title) filter.title = { $regex: title, $options: "i" };
     if (city) filter.city = { $regex: city, $options: "i" };
@@ -22,7 +22,11 @@ router.get("/", async (req, res) => {
 
 router.get("/:id", async (req, res) => {
   try {
-    const job = await Job.findById(req.params.id);
+    const job = await Job.findByIdAndUpdate(
+      req.params.id,
+      { $inc: { views: 1 } },
+      { new: true }
+    );
     if (!job) return res.status(404).json({ message: "Job not found." });
     res.json(job);
   } catch (err) {
