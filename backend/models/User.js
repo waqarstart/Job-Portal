@@ -4,7 +4,9 @@ const userSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
-    password: { type: String, required: true },
+    password: { type: String }, // not required for Google-authenticated accounts
+    authProvider: { type: String, enum: ["local", "google"], default: "local" },
+    googleId: { type: String, unique: true, sparse: true },
     role: { type: String, enum: ["user", "admin", "hr"], default: "user" },
     resetPasswordToken: String,
     resetPasswordExpires: Date,

@@ -14,6 +14,13 @@ export async function login(email, password) {
   return data.user;
 }
 
+export async function loginWithGoogle(credential) {
+  const { data } = await api.post("/auth/google", { credential });
+  localStorage.setItem("token", data.token);
+  localStorage.setItem("user", JSON.stringify(data.user));
+  return data.user;
+}
+
 export function logout() {
   localStorage.removeItem("token");
   localStorage.removeItem("user");

@@ -12,6 +12,12 @@ export function AuthProvider({ children }) {
     return loggedInUser;
   }
 
+  async function loginWithGoogle(credential) {
+    const loggedInUser = await auth.loginWithGoogle(credential);
+    setUser(loggedInUser);
+    return loggedInUser;
+  }
+
   async function register(name, email, password) {
     const newUser = await auth.register(name, email, password);
     setUser(newUser);
@@ -28,6 +34,7 @@ export function AuthProvider({ children }) {
       value={{
         user,
         login,
+        loginWithGoogle,
         logout,
         register,
         isLoggedIn: !!user,

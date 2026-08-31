@@ -2,10 +2,15 @@ import express from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
+import { OAuth2Client } from "google-auth-library";
 import User from "../models/User.js";
 import { sendPasswordResetEmail } from "../utils/mailer.js";
 
 const router = express.Router();
+
+const googleClient = process.env.GOOGLE_CLIENT_ID
+  ? new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
+  : null;
 
 function makeToken(user) {
   return jwt.sign(
@@ -51,6 +56,12 @@ router.post("/login", async (req, res) => {
       return res.status(400).json({ message: "Invalid email or password." });
     }
 
+    if (!user.password) {
+      return res.status(400).json({
+        message: "This account signs in with Google. Please use \"Continue with Google\".",
+      });
+    }
+
     const match = await bcrypt.compare(password, user.password);
     if (!match) {
       return res.status(400).json({ message: "Invalid email or password." });
@@ -60,6 +71,62 @@ router.post("/login", async (req, res) => {
     res.json({ token, user: publicUser(user) });
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+});
+
+/**
+ * Google Sign-In: verify the ID token from Google Identity Services,
+ * then find or create a matching account and issue our own JWT — same
+ * response shape as /login and /register so the frontend can treat it
+ * identically.
+ */
+router.post("/google", async (req, res) => {
+  try {
+    if (!googleClient) {
+      return res.status(500).json({ message: "Google sign-in is not configured on the server." });
+    }
+
+    const { credential } = req.body;
+    if (!credential) {
+      return res.status(400).json({ message: "Missing Google credential." });
+    }
+
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    const payload = ticket.getPayload();
+
+    if (!payload?.email) {
+      return res.status(400).json({ message: "Google account has no email." });
+    }
+
+    let user = await User.findOne({
+      $or: [{ googleId: payload.sub }, { email: payload.email.toLowerCase() }],
+    });
+
+    if (user) {
+      // Link Google to an existing local account on first Google sign-in
+      if (!user.googleId) {
+        user.googleId = payload.sub;
+        user.authProvider = user.authProvider === "local" && user.password ? user.authProvider : "google";
+        if (!user.profilePicture && payload.picture) user.profilePicture = payload.picture;
+        await user.save();
+      }
+    } else {
+      user = await User.create({
+        name: payload.name || payload.email.split("@")[0],
+        email: payload.email.toLowerCase(),
+        googleId: payload.sub,
+        authProvider: "google",
+        profilePicture: payload.picture || undefined,
+      });
+    }
+
+    const token = makeToken(user);
+    res.json({ token, user: publicUser(user) });
+  } catch (err) {
+    res.status(400).json({ message: "Google sign-in failed. " + err.message });
   }
 });
 
