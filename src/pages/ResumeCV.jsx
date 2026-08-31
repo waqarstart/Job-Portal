@@ -74,9 +74,9 @@ export default function ResumeCV() {
   // Row "more actions" menu
   const [openMenuId, setOpenMenuId] = useState(null);
 
-  async function load() {
+  async function load(silent = false) {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const [cvData, statsData, usageData] = await Promise.all([
         getMyCVs(),
         getCVStats().catch(() => null),
@@ -95,7 +95,7 @@ export default function ResumeCV() {
         }
       );
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }
 
@@ -109,7 +109,7 @@ export default function ResumeCV() {
       await uploadCV(file, label || file.name);
       setFile(null);
       setLabel("");
-      await load();
+      await load(true);
     } catch (err) {
       setUploadError(err.response?.data?.message || "Could not upload CV.");
     } finally {
@@ -131,7 +131,7 @@ export default function ResumeCV() {
     try {
       await updateCV(editCv._id, { label: editLabel, file: editFile || undefined });
       setEditCv(null);
-      await load();
+      await load(true);
     } catch (err) {
       setEditError(err.response?.data?.message || "Could not update CV.");
     } finally {
@@ -143,7 +143,7 @@ export default function ResumeCV() {
     setOpenMenuId(null);
     try {
       await toggleCVLock(id);
-      await load();
+      await load(true);
     } catch (err) {
       alert(err.response?.data?.message || "Could not toggle lock.");
     }
@@ -153,7 +153,7 @@ export default function ResumeCV() {
     setOpenMenuId(null);
     try {
       await setPrimaryCV(id);
-      await load();
+      await load(true);
     } catch (err) {
       alert(err.response?.data?.message || "Could not set primary CV.");
     }
@@ -169,7 +169,7 @@ export default function ResumeCV() {
     try {
       await deleteCV(deleteConfirmCv._id);
       setDeleteConfirmCv(null);
-      await load();
+      await load(true);
     } catch (err) {
       alert(err.response?.data?.message || "Could not delete CV.");
     } finally {
@@ -177,17 +177,33 @@ export default function ResumeCV() {
     }
   }
 
-  function handleDownload(cv) {
+  async function handleDownload(cv) {
     setOpenMenuId(null);
     const url = `${FILE_BASE}${cv.url}`;
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = cv.originalName || cv.label || "cv";
-    a.target = "_blank";
-    a.rel = "noopener noreferrer";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    const filename = cv.originalName || cv.label || "cv";
+
+    try {
+      // Cross-origin URLs are ignored by the `download` attribute in most
+      // browsers (it just opens a new tab instead) — fetching the file as a
+      // blob and downloading that (same-origin blob: URL) forces a real
+      // download every time.
+      const response = await fetch(url);
+      if (!response.ok) throw new Error("Download failed.");
+
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+
+      URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      alert("Could not download this CV. Please try again.");
+    }
   }
 
   const canUpload = cvs.length < MAX_CVS;
@@ -274,7 +290,7 @@ export default function ResumeCV() {
                     &nbsp;
                   </label>
                   <label className="flex items-center rounded-xl border overflow-hidden text-sm">
-                    <span className="px-4 py-2.5 bg-gray-50 border-r font-medium text-gray-700 cursor-pointer whitespace-nowrap">
+                    <span className="px-4 py-2.5 bg-blue-600 text-white font-medium cursor-pointer whitespace-nowrap hover:bg-blue-700 transition">
                       Choose File
                     </span>
                     <span className="px-3 py-2.5 text-gray-400 truncate">
@@ -407,13 +423,13 @@ export default function ResumeCV() {
                       </td>
 
                       <td className="px-5 py-4">
-                        <div className="flex items-center justify-end gap-2 relative">
+                        <div className="flex items-center justify-end gap-1.5 relative">
                           <a
                             href={`${FILE_BASE}${cv.url}`}
                             target="_blank"
                             rel="noreferrer"
                             title="View"
-                            className="rounded-lg border p-2 text-gray-500 hover:bg-blue-50 hover:text-blue-600"
+                            className="rounded-lg p-2 text-gray-500 transition-all duration-150 hover:scale-110 hover:bg-blue-50 hover:text-blue-600"
                           >
                             <HiOutlineEye className="h-4 w-4" />
                           </a>
@@ -421,7 +437,7 @@ export default function ResumeCV() {
                           <button
                             onClick={() => handleDownload(cv)}
                             title="Download"
-                            className="rounded-lg border p-2 text-gray-500 hover:bg-blue-50 hover:text-blue-600"
+                            className="rounded-lg p-2 text-gray-500 transition-all duration-150 hover:scale-110 hover:bg-blue-50 hover:text-blue-600"
                           >
                             <HiOutlineArrowDownTray className="h-4 w-4" />
                           </button>
@@ -430,7 +446,7 @@ export default function ResumeCV() {
                             onClick={() => openEdit(cv)}
                             disabled={cv.locked}
                             title={cv.locked ? "Unlock to edit" : "Edit"}
-                            className="rounded-lg border p-2 text-gray-500 hover:bg-blue-50 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-40"
+                            className="rounded-lg p-2 text-gray-500 transition-all duration-150 hover:scale-110 hover:bg-blue-50 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100"
                           >
                             <HiOutlinePencil className="h-4 w-4" />
                           </button>
@@ -438,7 +454,7 @@ export default function ResumeCV() {
                           <button
                             onClick={() => handleToggleLock(cv._id)}
                             title={cv.locked ? "Unlock" : "Lock"}
-                            className={`rounded-lg border p-2 hover:bg-amber-50 hover:text-amber-600 ${cv.locked ? "text-amber-600" : "text-gray-500"}`}
+                            className={`rounded-lg p-2 transition-all duration-150 hover:scale-110 hover:bg-amber-50 hover:text-amber-600 ${cv.locked ? "text-amber-600" : "text-gray-500"}`}
                           >
                             {cv.locked ? <HiOutlineLockClosed className="h-4 w-4" /> : <HiOutlineLockOpen className="h-4 w-4" />}
                           </button>
@@ -446,7 +462,7 @@ export default function ResumeCV() {
                           <button
                             onClick={() => setOpenMenuId(openMenuId === cv._id ? null : cv._id)}
                             title="More"
-                            className="rounded-lg border p-2 text-gray-500 hover:bg-gray-100"
+                            className="rounded-lg p-2 text-gray-500 transition-all duration-150 hover:scale-110 hover:bg-gray-100"
                           >
                             <HiOutlineEllipsisVertical className="h-4 w-4" />
                           </button>
@@ -457,11 +473,10 @@ export default function ResumeCV() {
                               <div className="absolute right-0 top-full mt-1 w-44 rounded-xl border border-gray-100 bg-white shadow-xl z-20 py-1 text-left">
                                 <button
                                   onClick={() => handleSetPrimary(cv._id)}
-                                  disabled={cv.isPrimary}
-                                  className="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                                  className="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                                 >
                                   <HiOutlineStar className="h-4 w-4" />
-                                  {cv.isPrimary ? "Already Primary" : "Set as Primary"}
+                                  {cv.isPrimary ? "Unmark as Primary" : "Set as Primary"}
                                 </button>
                                 <button
                                   onClick={() => handleDelete(cv)}

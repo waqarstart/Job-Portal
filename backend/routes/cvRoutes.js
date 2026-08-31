@@ -141,17 +141,27 @@ router.put("/:id", requireAuth, upload.single("cv"), async (req, res) => {
   }
 });
 
-// Set a CV as the primary CV (unsets any previous primary)
+const MAX_PRIMARY_CVS = 4;
+
+// Toggle a CV's primary status (up to MAX_PRIMARY_CVS can be primary at once)
 router.patch("/:id/primary", requireAuth, async (req, res) => {
   try {
     const cv = await CV.findOne({ _id: req.params.id, user: req.user.id });
     if (!cv) return res.status(404).json({ message: "CV not found." });
 
-    await CV.updateMany({ user: req.user.id }, { $set: { isPrimary: false } });
+    if (!cv.isPrimary) {
+      const primaryCount = await CV.countDocuments({ user: req.user.id, isPrimary: true });
+      if (primaryCount >= MAX_PRIMARY_CVS) {
+        return res.status(400).json({
+          message: `You can mark up to ${MAX_PRIMARY_CVS} CVs as primary. Unmark one first.`,
+        });
+      }
+      cv.isPrimary = true;
+    } else {
+      cv.isPrimary = false;
+    }
 
-    cv.isPrimary = true;
     await cv.save();
-
     res.json(cv);
   } catch (err) {
     res.status(500).json({ message: err.message });

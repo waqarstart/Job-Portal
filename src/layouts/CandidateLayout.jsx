@@ -16,7 +16,7 @@ import UserMenu from "../components/UserMenu";
 import NotificationMenu from "../components/NotificationMenu";
 import { getMyApplications } from "../services/applicationService";
 import { getMyProfile } from "../services/userService";
-import { getCachedProfilePicture, setCachedProfilePicture } from "../utils/profileCache";
+import { getCachedProfilePicture, setCachedProfilePicture, getCachedNotifications, setCachedNotifications } from "../utils/profileCache";
 
 const FILE_BASE = (import.meta.env.VITE_API_URL || "http://localhost:5000/api").replace(/\/api$/, "");
 
@@ -35,7 +35,7 @@ const navItems = [
 export default function CandidateLayout({ children, title, profilePicture: picProp }) {
   const { user, logout } = useAuth();
   const location = useLocation();
-  const [notifications, setNotifications] = useState([]);
+  const [notifications, setNotifications] = useState(getCachedNotifications() || []);
 
   // Initialize from (in order): the live-preview prop, the module-level
   // cache from a previous page's fetch, or empty. This lets every new page
@@ -58,6 +58,7 @@ export default function CandidateLayout({ children, title, profilePicture: picPr
             icon: a.status === "hired" ? "🎉" : a.status === "rejected" ? "❌" : "📋",
           }));
         setNotifications(notifs);
+        setCachedNotifications(notifs);
       })
       .catch(() => {});
   }, []);
