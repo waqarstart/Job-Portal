@@ -10,6 +10,11 @@ export async function getJob(id) {
   return data;
 }
 
+export async function getTopCompanies(limit = 6) {
+  const { data } = await api.get("/jobs/companies/top", { params: { limit } });
+  return data;
+}
+
 // Admin only
 export async function createJob(job) {
   const { data } = await api.post("/jobs", job);

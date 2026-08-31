@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
+import Dropdown from "../components/Dropdown";
 import { searchJobs } from "../services/jobService";
 import { saveJob, unsaveJob, getSavedJobs } from "../services/savedJobService";
 import { useAuth } from "../context/AuthContext";
@@ -9,7 +10,19 @@ import {
   HiOutlineBookmark, HiBookmark, HiOutlineCheckCircle,
   HiOutlineClock, HiOutlineCurrencyDollar, HiOutlineCalendarDays,
   HiOutlineBuildingOffice2, HiOutlineShare, HiOutlineXMark,
+  HiOutlineBell, HiOutlineArrowUpTray,
 } from "react-icons/hi2";
+
+const SORT_OPTIONS = [
+  { value: "recent", label: "Most Recent" },
+  { value: "salary-high", label: "Salary: High to Low" },
+  { value: "salary-low", label: "Salary: Low to High" },
+];
+
+function parseSalaryNumber(salary = "") {
+  const nums = (salary.match(/\d[\d,]*/g) || []).map((n) => parseInt(n.replace(/,/g, "")));
+  return nums.length ? Math.max(...nums) : 0;
+}
 
 const AVATAR_COLORS = [
   "bg-blue-600","bg-violet-600","bg-emerald-600",
@@ -28,6 +41,11 @@ function timeAgo(date) {
   if (h < 24) return `${h}h ago`;
   const d = Math.floor(h / 24);
   return d === 1 ? "1 day ago" : `${d} days ago`;
+}
+
+function isNewJob(date) {
+  const h = (Date.now() - new Date(date)) / 3600000;
+  return h < 48;
 }
 
 function formatSalary(salary) {
@@ -279,6 +297,9 @@ export default function FindJobs() {
   const [fTitles,   setFTitles]   = useState([]);
   const [fSkills,   setFSkills]   = useState([]);
   const [fCompanies,setFCompanies]= useState([]);
+  const [fCategories,setFCategories] = useState([]);
+  const [salaryMin, setSalaryMin] = useState(5000);
+  const [sortBy, setSortBy] = useState("recent");
 
   // Fix: watch URL params
   useEffect(() => {
@@ -325,6 +346,7 @@ export default function FindJobs() {
   function resetFilters() {
     setFTypes([]); setFModes([]); setFExps([]);
     setFCities([]); setFTitles([]); setFSkills([]); setFCompanies([]);
+    setFCategories([]); setSalaryMin(5000);
   }
 
   // Dynamic options — case-insensitive dedup
@@ -346,8 +368,11 @@ export default function FindJobs() {
   const titles     = uniq(allJobs.map(j => j.title));
   const skills     = uniq(allJobs.flatMap(j => j.skills || []));
   const companies  = uniq(allJobs.map(j => j.company));
+  const categories = uniq(allJobs.map(j => j.category));
 
-  const filtered = allJobs.filter(j => {
+  const maxSalaryInData = Math.max(1000000, ...allJobs.map(j => parseSalaryNumber(j.salary)));
+
+  let filtered = allJobs.filter(j => {
     if (fTypes.length    && !fTypes.some(v => v.toLowerCase() === j.type?.toLowerCase()))               return false;
     if (fModes.length    && !fModes.some(v => v.toLowerCase() === j.workMode?.toLowerCase()))           return false;
     if (fExps.length     && !fExps.some(v => v.toLowerCase() === j.experienceLevel?.toLowerCase()))     return false;
@@ -355,11 +380,28 @@ export default function FindJobs() {
     if (fTitles.length   && !fTitles.some(v => v.toLowerCase() === j.title?.toLowerCase()))             return false;
     if (fSkills.length   && !fSkills.some(s => j.skills?.map(sk=>sk.toLowerCase()).includes(s.toLowerCase()))) return false;
     if (fCompanies.length && !fCompanies.some(v => v.toLowerCase() === j.company?.toLowerCase()))       return false;
+    if (fCategories.length && !fCategories.some(v => v.toLowerCase() === j.category?.toLowerCase()))    return false;
+    if (salaryMin > 5000 && parseSalaryNumber(j.salary) < salaryMin)                                     return false;
     return true;
   });
 
+  if (sortBy === "salary-high") filtered = [...filtered].sort((a, b) => parseSalaryNumber(b.salary) - parseSalaryNumber(a.salary));
+  else if (sortBy === "salary-low") filtered = [...filtered].sort((a, b) => parseSalaryNumber(a.salary) - parseSalaryNumber(b.salary));
+  else filtered = [...filtered].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
   const hasFilters = fTypes.length + fModes.length + fExps.length +
-    fCities.length + fTitles.length + fSkills.length + fCompanies.length;
+    fCities.length + fTitles.length + fSkills.length + fCompanies.length +
+    fCategories.length + (salaryMin > 5000 ? 1 : 0);
+
+  function handleUploadCV() {
+    if (!isLoggedIn) { navigate("/login"); return; }
+    navigate("/dashboard/resume");
+  }
+
+  function handleCreateAlert() {
+    if (!isLoggedIn) { navigate("/login"); return; }
+    alert("Job alerts are coming soon — you'll be notified when matching jobs are posted.");
+  }
 
   // Page height for sticky columns
   const colHeight = "calc(100vh - 130px)";
@@ -390,6 +432,10 @@ export default function FindJobs() {
               className="flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition whitespace-nowrap">
               <HiOutlineMagnifyingGlass className="h-4 w-4" /> Find Jobs
             </button>
+            <button type="button" onClick={handleCreateAlert}
+              className="flex items-center gap-2 rounded-xl border border-gray-200 px-5 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition whitespace-nowrap">
+              <HiOutlineBell className="h-4 w-4" /> Create Alert
+            </button>
           </form>
         </div>
       </div>
@@ -411,13 +457,47 @@ export default function FindJobs() {
             </div>
             {/* Scrollable filter list */}
             <div className="flex-1 overflow-y-auto px-4 py-3 space-y-0">
+              {/* Salary Range */}
+              <div className="border-b border-gray-100 pb-3 mb-3">
+                <p className="text-xs font-bold uppercase tracking-wide text-gray-500 mb-2">Salary Range</p>
+                <input
+                  type="range"
+                  min={5000}
+                  max={maxSalaryInData}
+                  step={5000}
+                  value={salaryMin}
+                  onChange={(e) => setSalaryMin(Number(e.target.value))}
+                  className="w-full accent-blue-600"
+                />
+                <div className="flex items-center justify-between text-[11px] text-gray-500 mt-1">
+                  <span>PKR {salaryMin.toLocaleString()}</span>
+                  <span>PKR {maxSalaryInData.toLocaleString()}+</span>
+                </div>
+              </div>
+
               {jobTypes.length > 0   && <FilterSection title="Job Type"    options={jobTypes}   counts={jobTypes.reduce((a,t)=>({...a,[t]:countOf(allJobs,'type',t)}),{})}                  selected={fTypes}     onToggle={v=>toggleArr(fTypes,setFTypes,v)} />}
               {workModes.length > 0  && <FilterSection title="Job Shift"   options={workModes}  counts={workModes.reduce((a,m)=>({...a,[m]:countOf(allJobs,'workMode',m)}),{})}              selected={fModes}     onToggle={v=>toggleArr(fModes,setFModes,v)} />}
               {expLevels.length > 0  && <FilterSection title="Experience"  options={expLevels}  counts={expLevels.reduce((a,e)=>({...a,[e]:countOf(allJobs,'experienceLevel',e)}),{})}      selected={fExps}      onToggle={v=>toggleArr(fExps,setFExps,v)} />}
+              {categories.length > 0 && <FilterSection title="Categories"  options={categories} counts={categories.reduce((a,c)=>({...a,[c]:countOf(allJobs,'category',c)}),{})}            selected={fCategories} onToggle={v=>toggleArr(fCategories,setFCategories,v)} />}
               {cities.length > 0     && <FilterSection title="City"        options={cities}     counts={cities.reduce((a,c)=>({...a,[c]:countOf(allJobs,'city',c)}),{})}                    selected={fCities}    onToggle={v=>toggleArr(fCities,setFCities,v)} />}
               {titles.length > 0     && <FilterSection title="Job Title"   options={titles}     counts={titles.reduce((a,t)=>({...a,[t]:countOf(allJobs,'title',t)}),{})}                  selected={fTitles}    onToggle={v=>toggleArr(fTitles,setFTitles,v)} />}
               {skills.length > 0     && <FilterSection title="Skills"      options={skills}     counts={skills.reduce((a,s)=>({...a,[s]:countSkill(allJobs,s)}),{})}                       selected={fSkills}    onToggle={v=>toggleArr(fSkills,setFSkills,v)} />}
               {companies.length > 0  && <FilterSection title="Company"     options={companies}  counts={companies.reduce((a,c)=>({...a,[c]:countOf(allJobs,'company',c)}),{})}             selected={fCompanies} onToggle={v=>toggleArr(fCompanies,setFCompanies,v)} />}
+            </div>
+
+            {/* Apply / Reset */}
+            <div className="shrink-0 flex items-center gap-2 border-t border-gray-100 px-4 py-3">
+              <button
+                onClick={resetFilters}
+                className="flex-1 rounded-xl border border-gray-200 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition"
+              >
+                Reset
+              </button>
+              <button
+                className="flex-1 rounded-xl bg-blue-600 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition"
+              >
+                Apply Filters
+              </button>
             </div>
           </div>
         </div>
@@ -435,6 +515,24 @@ export default function FindJobs() {
                 </span>
               )}
             </p>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-xs text-gray-400 hidden sm:inline">Sort by:</span>
+              <Dropdown value={sortBy} onChange={setSortBy} options={SORT_OPTIONS} />
+            </div>
+          </div>
+
+          {/* Promo banner */}
+          <div className="shrink-0 mb-3 flex items-center justify-between gap-4 rounded-2xl bg-gradient-to-r from-blue-900 to-blue-700 px-6 py-5">
+            <div>
+              <p className="text-white font-bold text-base leading-snug">Find the right job.</p>
+              <p className="text-white font-bold text-base leading-snug">Build your <span className="text-blue-300">future.</span></p>
+            </div>
+            <button
+              onClick={handleUploadCV}
+              className="flex items-center gap-2 shrink-0 rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-blue-700 hover:bg-blue-50 transition whitespace-nowrap"
+            >
+              <HiOutlineArrowUpTray className="h-4 w-4" /> Upload CV
+            </button>
           </div>
 
           {/* Scrollable list */}
@@ -476,7 +574,12 @@ export default function FindJobs() {
                     <div className="flex-1 min-w-0">
                       {/* Title + save */}
                       <div className="flex items-start justify-between gap-2">
-                        <p className="text-sm font-bold text-gray-900 leading-tight">{job.title}</p>
+                        <p className="text-sm font-bold text-gray-900 leading-tight flex items-center gap-2">
+                          {job.title}
+                          {isNewJob(job.createdAt) && (
+                            <span className="rounded-full bg-green-50 border border-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-600">New</span>
+                          )}
+                        </p>
                         <button onClick={e => { e.stopPropagation(); handleToggleSave(job._id); }}
                           className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-gray-200 text-gray-400 hover:bg-gray-50 transition">
                           {isSaved ? <HiBookmark className="h-4 w-4 text-blue-600" /> : <HiOutlineBookmark className="h-4 w-4" />}

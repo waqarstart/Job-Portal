@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import {
   HiOutlineCalendarDays, HiOutlineClock, HiOutlineCheckCircle, HiOutlineXCircle,
   HiOutlineMagnifyingGlass, HiOutlineUserGroup,
@@ -63,6 +63,7 @@ export default function HRInterviews() {
   const [openMenuId, setOpenMenuId] = useState(null);
 
   const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [modalDataReady, setModalDataReady] = useState(false);
   const [schedulable, setSchedulable] = useState([]);
   const [form, setForm] = useState(emptyForm());
   const [saving, setSaving] = useState(false);
@@ -90,6 +91,24 @@ export default function HRInterviews() {
   }
 
   useEffect(load, []);
+
+  // Lock background page scroll while the modal (or its loading state) is open.
+  useLayoutEffect(() => {
+    if (!showScheduleModal) return;
+
+    const html = document.documentElement;
+    const body = document.body;
+    const prevHtmlOverflow = html.style.overflow;
+    const prevBodyOverflow = body.style.overflow;
+
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+
+    return () => {
+      html.style.overflow = prevHtmlOverflow;
+      body.style.overflow = prevBodyOverflow;
+    };
+  }, [showScheduleModal]);
 
   const filtered = useMemo(() => {
     let list = [...interviews];
@@ -139,9 +158,12 @@ export default function HRInterviews() {
   async function openScheduleModal() {
     setForm(emptyForm());
     setFormError("");
+    setSchedulable([]);
+    setModalDataReady(false);
     setShowScheduleModal(true);
     const apps = await getSchedulableApplicants();
     setSchedulable(apps);
+    setModalDataReady(true);
   }
 
   async function submitSchedule() {
@@ -397,6 +419,18 @@ export default function HRInterviews() {
               </button>
             </div>
 
+            {!modalDataReady ? (
+              // Show a lightweight, fixed-size loading state until the
+              // candidate list has loaded — this guarantees the modal's
+              // real height is never measured/changed after the form
+              // mounts, which is what caused the scrollbar to flash.
+              <div className="flex flex-col items-center justify-center py-16">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+                <p className="mt-3 text-sm text-gray-400">Loading candidates...</p>
+              </div>
+            ) : (
+              <>
+
             {formError && (
               <div className="mb-4 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-600">{formError}</div>
             )}
@@ -518,6 +552,8 @@ export default function HRInterviews() {
                 </button>
               </div>
             </div>
+              </>
+            )}
           </div>
         </div>
       )}

@@ -272,13 +272,17 @@ router.get("/jobs", requireAuth, requireHR, async (req, res) => {
 
 router.post("/jobs", requireAuth, requireHR, async (req, res) => {
   try {
-    const { title, company, city, description, salary, type, status } = req.body;
+    const {
+      title, company, city, description, salary, type, status,
+      workMode, experienceLevel, skills, category, applicationDeadline,
+    } = req.body;
     if (!title || !company || !city || !description) {
       return res.status(400).json({ message: "Title, company, city and description are required." });
     }
 
     const job = await Job.create({
       title, company, city, description, salary, type,
+      workMode, experienceLevel, skills, category, applicationDeadline,
       postedBy: req.user.id,
       status: status === "draft" ? "draft" : "active",
     });

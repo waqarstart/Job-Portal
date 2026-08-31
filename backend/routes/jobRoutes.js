@@ -20,6 +20,24 @@ router.get("/", async (req, res) => {
   }
 });
 
+// Public: top companies currently hiring (by number of active job postings)
+router.get("/companies/top", async (req, res) => {
+  try {
+    const limit = Number(req.query.limit) || 6;
+
+    const results = await Job.aggregate([
+      { $match: { status: "active" } },
+      { $group: { _id: "$company", jobCount: { $sum: 1 } } },
+      { $sort: { jobCount: -1 } },
+      { $limit: limit },
+    ]);
+
+    res.json(results.map((r) => ({ company: r._id, jobCount: r.jobCount })));
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 router.get("/:id", async (req, res) => {
   try {
     const job = await Job.findByIdAndUpdate(
@@ -37,7 +55,10 @@ router.get("/:id", async (req, res) => {
 // Admin only: create a job
 router.post("/", requireAuth, requireAdmin, async (req, res) => {
   try {
-    const { title, company, city, description, salary, type } = req.body;
+    const {
+      title, company, city, description, salary, type,
+      workMode, experienceLevel, skills, category, applicationDeadline,
+    } = req.body;
 
     if (!title || !company || !city || !description) {
       return res.status(400).json({ message: "Title, company, city and description are required." });
@@ -50,6 +71,7 @@ router.post("/", requireAuth, requireAdmin, async (req, res) => {
       description,
       salary,
       type,
+      workMode, experienceLevel, skills, category, applicationDeadline,
       postedBy: req.user.id,
     });
 

@@ -19,6 +19,7 @@ import {
   HiOutlineSparkles,
   HiOutlineInformationCircle,
   HiOutlinePencilSquare,
+  HiOutlineXMark,
 } from "react-icons/hi2";
 
 // ── Steps — 4 total (Description + Requirements merged) ───────────────────────
@@ -33,12 +34,14 @@ const JOB_TYPES   = ["Full Time", "Part Time", "Internship", "Contract", "Freela
 const WORK_MODES  = ["On-site", "Remote", "Hybrid"];
 const EXP_LEVELS  = ["Entry Level", "1 - 2 Years", "3 - 5 Years", "5 - 8 Years", "8+ Years"];
 const PAY_PERIODS = ["Per Month", "Per Year", "Per Hour", "Fixed"];
+const CATEGORIES  = ["Sales", "Marketing", "IT & Software", "Customer Support", "Finance", "Design", "HR & Admin", "Data Science"];
 
 const INIT = {
   title: "", company: "", type: "Full Time", workMode: "On-site",
-  city: "", experienceLevel: "1 - 2 Years",
+  city: "", experienceLevel: "1 - 2 Years", category: CATEGORIES[0],
   salaryMin: "", salaryMax: "", salaryPeriod: "Per Month",
   deadline: "", aboutRole: "", responsibilities: "", requirements: "",
+  skills: [],
   interviewQuestions: [""],
 };
 
@@ -58,6 +61,56 @@ function validate(step, form) {
     if (!form.requirements.trim())     errs.requirements    = "Requirements are required";
   }
   return errs;
+}
+
+// ── Skills tag input ────────────────────────────────────────────────────────
+function SkillsInput({ value, onChange }) {
+  const [text, setText] = useState("");
+
+  function addSkill() {
+    const v = text.trim();
+    if (v && !value.includes(v)) onChange([...value, v]);
+    setText("");
+  }
+
+  function removeSkill(s) {
+    onChange(value.filter((v) => v !== s));
+  }
+
+  return (
+    <div>
+      <div className="flex items-center gap-2">
+        <Input
+          placeholder="e.g. React, Node.js, Figma"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === ",") { e.preventDefault(); addSkill(); }
+          }}
+        />
+        <button
+          type="button"
+          onClick={addSkill}
+          className="shrink-0 rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50"
+        >
+          Add
+        </button>
+      </div>
+
+      {value.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mt-2">
+          {value.map((s) => (
+            <span key={s} className="flex items-center gap-1.5 rounded-full bg-blue-50 text-blue-700 px-3 py-1 text-xs font-medium">
+              {s}
+              <button type="button" onClick={() => removeSkill(s)} className="hover:text-blue-900">
+                <HiOutlineXMark className="h-3 w-3" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ── Field wrapper ──────────────────────────────────────────────────────────────
@@ -365,9 +418,14 @@ export default function HRPostJob() {
         title:    form.title,
         company:  form.company,
         type:     form.type,
+        workMode: form.workMode,
+        experienceLevel: form.experienceLevel,
+        category: form.category,
+        skills:   form.skills,
         city:     form.city,
         description: [form.aboutRole, form.responsibilities, form.requirements].filter(Boolean).join("\n\n"),
         salary:   form.salaryMin ? `PKR ${form.salaryMin}${form.salaryMax ? ` - ${form.salaryMax}` : ""} ${form.salaryPeriod}` : "",
+        applicationDeadline: form.deadline || undefined,
         interviewQuestions: form.interviewQuestions.filter((q) => q.trim()),
       });
       navigate("/hr/jobs");
@@ -433,6 +491,9 @@ export default function HRPostJob() {
                 <Field label="Experience Level" required>
                   <Select icon={HiOutlineClock} options={EXP_LEVELS} searchable value={form.experienceLevel} onChange={(e) => set("experienceLevel", e.target.value)} />
                 </Field>
+                <Field label="Category" required>
+                  <Select icon={HiOutlineBriefcase} options={CATEGORIES} searchable value={form.category} onChange={(e) => set("category", e.target.value)} />
+                </Field>
                 <Field label="Salary Range (PKR)" required error={errors.salaryMin}
                   hint="Enter minimum and maximum salary">
                   <div className="flex items-center gap-2">
@@ -451,6 +512,12 @@ export default function HRPostJob() {
                   <Input icon={HiOutlineCalendarDays} type="date" hasError={!!errors.deadline}
                     value={form.deadline} onChange={(e) => set("deadline", e.target.value)} />
                 </Field>
+
+                <div className="sm:col-span-2">
+                  <Field label="Skills" hint="Press Enter to add a skill">
+                    <SkillsInput value={form.skills} onChange={(skills) => set("skills", skills)} />
+                  </Field>
+                </div>
               </div>
             )}
 
@@ -539,6 +606,8 @@ export default function HRPostJob() {
                       { label: "Work Mode",   value: form.workMode },
                       { label: "Location",    value: form.city },
                       { label: "Experience",  value: form.experienceLevel },
+                      { label: "Category",    value: form.category },
+                      { label: "Skills",      value: form.skills.length ? form.skills.join(", ") : "—" },
                       { label: "Salary",      value: form.salaryMin ? `PKR ${form.salaryMin}${form.salaryMax ? ` - ${form.salaryMax}` : ""} ${form.salaryPeriod}` : "—" },
                       { label: "Deadline",    value: form.deadline || "—" },
                     ].map((row) => (

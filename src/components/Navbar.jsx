@@ -2,9 +2,14 @@ import { useState, useRef, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { getMyProfile } from "../services/userService";
-import { getCachedProfilePicture, setCachedProfilePicture } from "../utils/profileCache";
+import { getMyApplications } from "../services/applicationService";
 import {
-  HiOutlineBell, HiOutlineLanguage, HiOutlineLockClosed,
+  getCachedProfilePicture, setCachedProfilePicture,
+  getCachedNotifications, setCachedNotifications,
+} from "../utils/profileCache";
+import NotificationMenu from "./NotificationMenu";
+import {
+  HiOutlineLanguage, HiOutlineLockClosed,
   HiOutlineArrowRightOnRectangle, HiChevronDown, HiChevronUp,
 } from "react-icons/hi2";
 
@@ -16,6 +21,7 @@ export default function Navbar() {
   const navigate  = useNavigate();
   const [open, setOpen] = useState(false);
   const [profilePicture, setProfilePicture] = useState(getCachedProfilePicture() || "");
+  const [notifications, setNotifications] = useState(getCachedNotifications() || []);
   const ref = useRef(null);
 
   // Close dropdown on outside click
@@ -43,6 +49,28 @@ export default function Navbar() {
         setCachedProfilePicture(pic);
       })
       .catch(() => setProfilePicture(""));
+  }, [user]);
+
+  // Same candidate-only notifications the dashboard sidebar shows
+  useEffect(() => {
+    if (!user || user.role !== "user") {
+      setNotifications([]);
+      return;
+    }
+
+    getMyApplications()
+      .then((apps) => {
+        const notifs = apps
+          .filter((a) => ["shortlisted", "selected", "hired", "rejected", "under_review"].includes(a.status))
+          .map((a) => ({
+            message: `Your application for ${a.job?.title} is ${a.status.replace("_", " ")}`,
+            time: new Date(a.updatedAt).toLocaleDateString(),
+            icon: a.status === "hired" ? "🎉" : a.status === "rejected" ? "❌" : "📋",
+          }));
+        setNotifications(notifs);
+        setCachedNotifications(notifs);
+      })
+      .catch(() => {});
   }, [user]);
 
   function navClass(path) {
@@ -79,8 +107,15 @@ export default function Navbar() {
         <div className="hidden items-center gap-8 md:flex">
           <Link to="/" className={navClass("/")}>Home</Link>
           <Link to="/find-jobs" className={navClass("/find-jobs")}>Find Jobs</Link>
-          <Link to="/" className="text-sm font-medium text-gray-600 hover:text-blue-600 transition">Companies</Link>
-          <Link to="/" className="text-sm font-medium text-gray-600 hover:text-blue-600 transition">About</Link>
+          <Link to="/#top-companies" className="text-sm font-medium text-gray-600 hover:text-blue-600 transition">Companies</Link>
+          <button
+            type="button"
+            onClick={() => alert("Salary insights are coming soon.")}
+            className="text-sm font-medium text-gray-600 hover:text-blue-600 transition"
+          >
+            Salaries
+          </button>
+          <Link to="/#career-resources" className="text-sm font-medium text-gray-600 hover:text-blue-600 transition">Career Advice</Link>
         </div>
 
         {/* Right side */}
@@ -95,10 +130,17 @@ export default function Navbar() {
         ) : (
           <div className="flex items-center gap-3">
 
+            {user.role === "hr" && (
+              <Link
+                to="/hr/post-job"
+                className="hidden sm:block rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition"
+              >
+                Post a Job
+              </Link>
+            )}
+
             {/* Bell */}
-            <button className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 text-gray-500 hover:bg-gray-50 transition">
-              <HiOutlineBell className="h-5 w-5" />
-            </button>
+            <NotificationMenu notifications={notifications} />
 
             {/* Avatar dropdown */}
             <div className="relative" ref={ref}>

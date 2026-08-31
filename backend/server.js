@@ -14,6 +14,7 @@ import dashboardRoutes from "./routes/dashboardRoutes.js";
 import cvRoutes from "./routes/cvRoutes.js";
 import hrRoutes from "./routes/hrRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
+import newsletterRoutes from "./routes/newsletterRoutes.js";
 
 dotenv.config();
 
@@ -82,6 +83,7 @@ app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/cvs", cvRoutes);
 app.use("/api/hr", hrRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/newsletter", newsletterRoutes);
 
 // =========================
 // ROOT
