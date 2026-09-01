@@ -47,9 +47,17 @@ router.get("/candidate", requireAuth, async (req, res) => {
       if (pipeline[app.status] !== undefined) pipeline[app.status]++;
     }
 
-    // "Interviews" stat: applications that still need their AI interview done
-    const pendingInterviews = applications.filter((a) => a.status === "applied");
-    const nextInterview = pendingInterviews[0] || null; // most recent application awaiting interview
+    // "Interviews" stat: applications eligible for AI interview that are not done
+    const pendingInterviews = applications.filter(
+      (a) =>
+        Number.isFinite(Number(a.cvRating)) &&
+        Number(a.cvRating) > 50 &&
+        a.status !== "rejected" &&
+        a.interviewStatus !== "completed" &&
+        a.interviewStatus !== "cancelled" &&
+        a.status !== "interviewed"
+    );
+    const nextInterview = pendingInterviews[0] || null;
 
     res.json({
       stats: {

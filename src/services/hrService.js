@@ -11,6 +11,11 @@ export async function getHRJobs(params = {}) {
   return data;
 }
 
+export async function getHRJob(id) {
+  const { data } = await api.get(`/hr/jobs/${id}`);
+  return data;
+}
+
 export async function createHRJob(job) {
   const { data } = await api.post("/hr/jobs", job);
   return data;

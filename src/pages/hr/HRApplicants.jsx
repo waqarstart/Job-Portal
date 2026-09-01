@@ -22,6 +22,9 @@ import {
   HiOutlineAdjustmentsHorizontal,
   HiMiniChevronUpDown,
 } from "react-icons/hi2";
+import InterviewFeedbackPanel, {
+  InterviewStatusBadge,
+} from "../../components/InterviewFeedbackPanel";
 
 const FILE_BASE = (
   import.meta.env.VITE_API_URL || "http://localhost:5000/api"
@@ -541,6 +544,21 @@ export default function HRApplicants() {
                   <p className="text-[10px] text-gray-400">
                     {new Date(app.createdAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
                   </p>
+                  {(app.interviewStatus ||
+                    (typeof app.cvRating === "number" &&
+                      app.cvRating > 50 &&
+                      app.status !== "rejected")) && (
+                    <div className="mt-1">
+                      <InterviewStatusBadge
+                        status={
+                          app.interviewStatus ||
+                          (app.status === "interviewed"
+                            ? "completed"
+                            : "pending")
+                        }
+                      />
+                    </div>
+                  )}
                 </div>
 
                 {/* Actions */}
@@ -643,17 +661,7 @@ export default function HRApplicants() {
                     )}
                   </div>
                   <CvEvalPanel application={app} />
-                  {app.interviewSummary && (
-                    <div className="mt-3 rounded-lg border border-gray-200 bg-white p-3 text-xs text-gray-600">
-                      <span className="font-semibold text-gray-700">Interview summary: </span>
-                      {app.interviewSummary}
-                    </div>
-                  )}
-                  {typeof app.interviewRating === "number" && (
-                    <span className="mt-2 inline-block rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-                      Interview rating: {app.interviewRating}/10
-                    </span>
-                  )}
+                  <InterviewFeedbackPanel application={app} />
                 </div>
               )}
             </div>

@@ -17,6 +17,8 @@ import adminRoutes from "./routes/adminRoutes.js";
 import newsletterRoutes from "./routes/newsletterRoutes.js";
 
 dotenv.config();
+// Also try repo-root .env when running from /backend
+dotenv.config({ path: path.resolve(process.cwd(), "../.env") });
 
 connectDB();
 

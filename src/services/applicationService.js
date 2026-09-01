@@ -31,6 +31,11 @@ export async function getMyApplications() {
   return data;
 }
 
+export async function getMyApplication(applicationId) {
+  const { data } = await api.get(`/applications/mine/${applicationId}`);
+  return data;
+}
+
 // Admin only
 export async function getAllApplications() {
   const { data } = await api.get("/applications");
@@ -41,7 +46,7 @@ export async function getAllApplications() {
 // wired up yet
 export async function submitManualRating(
   applicationId,
-  { rating, summary, audio_url }
+  { rating, summary, audio_url, transcript }
 ) {
   const { data } = await api.post(
     `/interview/manual-rating/${applicationId}`,
@@ -49,6 +54,7 @@ export async function submitManualRating(
       rating,
       summary,
       audio_url,
+      transcript,
     }
   );
 
@@ -70,7 +76,7 @@ export async function candidateFinishInterview(
   return data;
 }
 
-// Start a real LiveAvatar session
+// Start a real LiveAvatar session + question queue
 export async function startInterviewSession(applicationId) {
   const { data } = await api.post(
     `/interview/start/${applicationId}`
@@ -79,14 +85,23 @@ export async function startInterviewSession(applicationId) {
   return data;
 }
 
-// Called once interview ends
-export async function finishInterviewSession(applicationId) {
+export async function nextInterviewQuestion(applicationId) {
   const { data } = await api.post(
-    `/interview/finish/${applicationId}`
+    `/interview/next/${applicationId}`
+  );
+  return data;
+}
+
+// Called once interview ends
+export async function finishInterviewSession(applicationId, payload = {}) {
+  const { data } = await api.post(
+    `/interview/finish/${applicationId}`,
+    payload
   );
 
   return data;
 }
+
 // HR/Admin: schedule, complete, or cancel an interview
 export async function scheduleInterview(applicationId, payload) {
   const { data } = await api.patch(

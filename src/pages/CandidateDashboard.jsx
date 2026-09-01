@@ -127,8 +127,12 @@ export default function CandidateDashboard() {
                   </dl>
 
                   <Link
-                    to={`/interview/${data.nextInterview.job?._id}`}
-                    state={{ job: data.nextInterview.job, applicationId: data.nextInterview.applicationId }}
+                    to={`/interview/${data.nextInterview.applicationId}`}
+                    state={{
+                      job: data.nextInterview.job,
+                      applicationId: data.nextInterview.applicationId,
+                      autoStart: true,
+                    }}
                     className="mt-6 block rounded-lg bg-white py-2.5 text-center font-semibold text-blue-600 hover:bg-blue-50"
                   >
                     Start Interview

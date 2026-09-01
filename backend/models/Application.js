@@ -33,10 +33,32 @@ const applicationSchema = new mongoose.Schema(
       default: "pending",
     },
 
+    // Stored CV text for interview question generation (truncated)
+    cvExtractedText: String,
+
+    // Ordered interview question queue for this candidate
+    interviewQuestions: [
+      {
+        text: { type: String, required: true },
+        source: {
+          type: String,
+          enum: ["hr", "cv", "general"],
+          default: "hr",
+        },
+        order: { type: Number, default: 0 },
+      },
+    ],
+    currentQuestionIndex: { type: Number, default: 0 },
+
     // Interview evaluation
     interviewSummary: String,
     interviewAudioUrl: String,
     interviewRating: Number,
+    interviewTechnicalRating: Number,
+    interviewTranscript: String,
+    interviewTranscriptRaw: mongoose.Schema.Types.Mixed,
+    interviewStartedAt: Date,
+    interviewCompletedAt: Date,
 
     // Interview scheduling (set by HR)
     interviewDate: Date,
@@ -47,7 +69,7 @@ const applicationSchema = new mongoose.Schema(
     interviewerCount: { type: Number, default: 1 },
     interviewStatus: {
       type: String,
-      enum: ["pending", "completed", "cancelled"],
+      enum: ["pending", "in_progress", "completed", "cancelled"],
     },
     interviewCancelReason: String,
 

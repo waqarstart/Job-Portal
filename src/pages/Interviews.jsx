@@ -82,6 +82,12 @@ const STATUS_META = {
     dot: "bg-green-500",
   },
 
+  in_progress: {
+    label: "In Progress",
+    badge: "bg-blue-50 text-blue-700",
+    dot: "bg-blue-500",
+  },
+
   cancelled: {
     label: "Cancelled",
     badge: "bg-red-50 text-red-700",
@@ -523,20 +529,20 @@ export default function Interviews() {
           {visible.map((app) => {
             const currentStatus = applicationStatus(app);
 
-            /*
-             * Use the application status at the top.
-             *
-             * If the old application has:
-             *
-             * status = applied
-             * cvRating = 65
-             *
-             * it will say "Applied" while still providing
-             * the AI interview.
-             */
+            const displayStatusKey =
+              app.interviewStatus === "completed" ||
+              currentStatus === "interviewed"
+                ? "completed"
+                : app.interviewStatus === "cancelled"
+                  ? "cancelled"
+                  : app.interviewStatus === "in_progress"
+                    ? "in_progress"
+                    : app.interviewStatus === "pending"
+                      ? "pending"
+                      : currentStatus;
 
             const status =
-              STATUS_META[currentStatus] ||
+              STATUS_META[displayStatusKey] ||
               STATUS_META.pending;
 
             const dt = formatDate(app.interviewDate);
@@ -721,7 +727,19 @@ export default function Interviews() {
                           </p>
                         )}
 
+                        {app.interviewTranscript && (
+                          <div>
+                            <strong className="text-gray-800">
+                              Transcript:
+                            </strong>
+                            <pre className="mt-1 max-h-48 overflow-auto whitespace-pre-wrap rounded-lg bg-gray-50 p-3 text-xs text-gray-600">
+                              {app.interviewTranscript}
+                            </pre>
+                          </div>
+                        )}
+
                         {!app.interviewSummary &&
+                          !app.interviewTranscript &&
                           typeof app.interviewRating !==
                             "number" && (
                             <p className="text-gray-400">

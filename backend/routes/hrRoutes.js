@@ -270,19 +270,48 @@ router.get("/jobs", requireAuth, requireHR, async (req, res) => {
   }
 });
 
+router.get("/jobs/:id", requireAuth, requireHR, async (req, res) => {
+  try {
+    const job = await Job.findOne({
+      _id: req.params.id,
+      postedBy: req.user.id,
+    });
+    if (!job) return res.status(404).json({ message: "Job not found." });
+    res.json(job);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 router.post("/jobs", requireAuth, requireHR, async (req, res) => {
   try {
     const {
       title, company, city, description, salary, type, status,
       workMode, experienceLevel, skills, category, applicationDeadline,
+      interviewQuestions,
+      interviewDurationSeconds,
+      questionAnswerSeconds,
     } = req.body;
     if (!title || !company || !city || !description) {
       return res.status(400).json({ message: "Title, company, city and description are required." });
     }
 
+    const cleanedQuestions = Array.isArray(interviewQuestions)
+      ? interviewQuestions.map((q) => String(q).trim()).filter(Boolean)
+      : [];
+
     const job = await Job.create({
       title, company, city, description, salary, type,
       workMode, experienceLevel, skills, category, applicationDeadline,
+      interviewQuestions: cleanedQuestions,
+      interviewDurationSeconds:
+        Number.isFinite(Number(interviewDurationSeconds))
+          ? Number(interviewDurationSeconds)
+          : 120,
+      questionAnswerSeconds:
+        Number.isFinite(Number(questionAnswerSeconds))
+          ? Number(questionAnswerSeconds)
+          : 15,
       postedBy: req.user.id,
       status: status === "draft" ? "draft" : "active",
     });
@@ -298,7 +327,14 @@ router.put("/jobs/:id", requireAuth, requireHR, async (req, res) => {
     const job = await Job.findOne({ _id: req.params.id, postedBy: req.user.id });
     if (!job) return res.status(404).json({ message: "Job not found." });
 
-    Object.assign(job, req.body);
+    const updates = { ...req.body };
+    if (Array.isArray(updates.interviewQuestions)) {
+      updates.interviewQuestions = updates.interviewQuestions
+        .map((q) => String(q).trim())
+        .filter(Boolean);
+    }
+
+    Object.assign(job, updates);
     await job.save();
     res.json(job);
   } catch (err) {
@@ -323,7 +359,7 @@ router.get("/applicants", requireAuth, requireHR, async (req, res) => {
 
     const applications = await Application.find({ job: { $in: jobIds } })
       .populate("job", "title company city")
-      .populate("user", "name email phone location skills")
+      .populate("user", "name email phone location skills yearsOfExperience")
       .sort({ createdAt: -1 });
 
     res.json(applications);

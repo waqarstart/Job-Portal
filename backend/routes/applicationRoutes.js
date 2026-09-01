@@ -245,7 +245,9 @@ router.post(
       let cvMatchedSkills = [];
       let cvMissingSkills = [];
       let cvEvaluationStatus = "pending";
+      let cvExtractedText = "";
 
+      const CV_TEXT_MAX_CHARS = 8000;
 
       try {
 
@@ -270,6 +272,10 @@ router.post(
             cvFilePath
           );
 
+        cvExtractedText =
+          typeof cvText === "string"
+            ? cvText.slice(0, CV_TEXT_MAX_CHARS)
+            : "";
 
         console.log(
           `CV extracted: ${cvText.length} characters`
@@ -345,6 +351,8 @@ router.post(
           cvUrl,
 
           cvOriginalName,
+
+          cvExtractedText,
 
           cvRating,
 
@@ -438,6 +446,31 @@ router.patch("/:id/interview", requireAuth, requireHR, async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
+
+// ─────────────────────────────────────────────────────────────
+// Logged-in user: a single application they own (for interview room)
+// ─────────────────────────────────────────────────────────────
+
+router.get(
+  "/mine/:id",
+  requireAuth,
+  async (req, res) => {
+    try {
+      const app = await Application.findOne({
+        _id: req.params.id,
+        user: req.user.id,
+      }).populate("job");
+
+      if (!app) {
+        return res.status(404).json({ message: "Application not found." });
+      }
+
+      res.json(app);
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+);
 
 // ─────────────────────────────────────────────────────────────
 // Logged-in user: their own applications

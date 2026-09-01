@@ -1,7 +1,7 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import HRLayout from "../../layouts/HRLayout";
-import { createHRJob } from "../../services/hrService";
+import { createHRJob, getHRJob, updateHRJob } from "../../services/hrService";
 import {
   HiOutlineBriefcase,
   HiOutlineDocumentText,
@@ -373,12 +373,65 @@ function PreviewPanel({ form, onEdit }) {
 // ── Main ───────────────────────────────────────────────────────────────────────
 export default function HRPostJob() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const editId = searchParams.get("edit");
+
   const [step, setStep]       = useState(1);
   const [form, setForm]       = useState(INIT);
   const [errors, setErrors]   = useState({});
   const [posting, setPosting] = useState(false);
+  const [loadingEdit, setLoadingEdit] = useState(!!editId);
   const [apiError, setApiError] = useState("");
   const [direction, setDirection] = useState("forward");
+
+  useEffect(() => {
+    if (!editId) return;
+    let cancelled = false;
+    setLoadingEdit(true);
+    getHRJob(editId)
+      .then((job) => {
+        if (cancelled) return;
+        const salaryMatch = String(job.salary || "").match(
+          /PKR\s*(\d[\d,]*)(?:\s*-\s*(\d[\d,]*))?\s*(.*)?/i
+        );
+        const parts = String(job.description || "").split(/\n\n+/);
+        setForm({
+          title: job.title || "",
+          company: job.company || "",
+          type: job.type || "Full Time",
+          workMode: job.workMode || "On-site",
+          city: job.city || "",
+          experienceLevel: job.experienceLevel || "1 - 2 Years",
+          category: job.category || CATEGORIES[0],
+          salaryMin: salaryMatch?.[1]?.replace(/,/g, "") || "",
+          salaryMax: salaryMatch?.[2]?.replace(/,/g, "") || "",
+          salaryPeriod: (salaryMatch?.[3] || "Per Month").trim() || "Per Month",
+          deadline: job.applicationDeadline
+            ? new Date(job.applicationDeadline).toISOString().slice(0, 10)
+            : "",
+          aboutRole: parts[0] || "",
+          responsibilities: parts[1] || "",
+          requirements: parts[2] || "",
+          skills: Array.isArray(job.skills) ? job.skills : [],
+          interviewQuestions:
+            Array.isArray(job.interviewQuestions) &&
+            job.interviewQuestions.length
+              ? job.interviewQuestions
+              : [""],
+        });
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setApiError(err.response?.data?.message || "Could not load job for editing.");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingEdit(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [editId]);
 
   function set(field, value) {
     setForm((f) => ({ ...f, [field]: value }));
@@ -413,24 +466,29 @@ export default function HRPostJob() {
 
   async function handleSubmit() {
     setPosting(true); setApiError("");
+    const payload = {
+      title:    form.title,
+      company:  form.company,
+      type:     form.type,
+      workMode: form.workMode,
+      experienceLevel: form.experienceLevel,
+      category: form.category,
+      skills:   form.skills,
+      city:     form.city,
+      description: [form.aboutRole, form.responsibilities, form.requirements].filter(Boolean).join("\n\n"),
+      salary:   form.salaryMin ? `PKR ${form.salaryMin}${form.salaryMax ? ` - ${form.salaryMax}` : ""} ${form.salaryPeriod}` : "",
+      applicationDeadline: form.deadline || undefined,
+      interviewQuestions: form.interviewQuestions.filter((q) => q.trim()),
+    };
     try {
-      await createHRJob({
-        title:    form.title,
-        company:  form.company,
-        type:     form.type,
-        workMode: form.workMode,
-        experienceLevel: form.experienceLevel,
-        category: form.category,
-        skills:   form.skills,
-        city:     form.city,
-        description: [form.aboutRole, form.responsibilities, form.requirements].filter(Boolean).join("\n\n"),
-        salary:   form.salaryMin ? `PKR ${form.salaryMin}${form.salaryMax ? ` - ${form.salaryMax}` : ""} ${form.salaryPeriod}` : "",
-        applicationDeadline: form.deadline || undefined,
-        interviewQuestions: form.interviewQuestions.filter((q) => q.trim()),
-      });
+      if (editId) {
+        await updateHRJob(editId, payload);
+      } else {
+        await createHRJob(payload);
+      }
       navigate("/hr/jobs");
     } catch (err) {
-      setApiError(err.response?.data?.message || "Could not post job.");
+      setApiError(err.response?.data?.message || (editId ? "Could not update job." : "Could not post job."));
     } finally {
       setPosting(false);
     }
@@ -439,7 +497,14 @@ export default function HRPostJob() {
   const slideClass = direction === "forward" ? "animate-slide-in-right" : "animate-slide-in-left";
 
   return (
-    <HRLayout title="Post a New Job" subtitle="Provide job details to attract the right candidates">
+    <HRLayout
+      title={editId ? "Edit Job" : "Post a New Job"}
+      subtitle={
+        editId
+          ? "Update job details and AI interview questions"
+          : "Provide job details to attract the right candidates"
+      }
+    >
       <style>{`
         @keyframes slideInRight { from { opacity:0; transform:translateX(36px); } to { opacity:1; transform:translateX(0); } }
         @keyframes slideInLeft  { from { opacity:0; transform:translateX(-36px); } to { opacity:1; transform:translateX(0); } }
@@ -447,6 +512,12 @@ export default function HRPostJob() {
         .animate-slide-in-left  { animation: slideInLeft  0.32s cubic-bezier(.4,0,.2,1) both; }
       `}</style>
 
+      {loadingEdit ? (
+        <div className="rounded-2xl border border-gray-100 bg-white p-10 text-center text-sm text-gray-500 shadow-sm">
+          Loading job…
+        </div>
+      ) : (
+      <>
       <StepBar current={step} />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
@@ -584,7 +655,9 @@ export default function HRPostJob() {
                 <div className="flex items-start gap-3 rounded-xl bg-emerald-50 border border-emerald-100 p-4">
                   <HiOutlineCheckCircle className="h-5 w-5 shrink-0 text-emerald-600 mt-0.5" />
                   <div>
-                    <p className="text-sm font-semibold text-emerald-700">Ready to Publish!</p>
+                    <p className="text-sm font-semibold text-emerald-700">
+                      {editId ? "Ready to Save Changes!" : "Ready to Publish!"}
+                    </p>
                     <p className="text-xs text-emerald-600 mt-0.5">Review your job posting. Click any edit button to go back and make changes.</p>
                   </div>
                 </div>
@@ -712,7 +785,13 @@ export default function HRPostJob() {
                 <button type="button" onClick={handleSubmit} disabled={posting}
                   className="flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60 transition shadow-sm shadow-blue-200">
                   <HiOutlineCheckCircle className="h-4 w-4" />
-                  {posting ? "Publishing..." : "Publish Job"}
+                  {posting
+                    ? editId
+                      ? "Saving..."
+                      : "Publishing..."
+                    : editId
+                      ? "Save Changes"
+                      : "Publish Job"}
                 </button>
               )}
             </div>
@@ -724,6 +803,8 @@ export default function HRPostJob() {
           <PreviewPanel form={form} onEdit={step === 4 ? goEdit : null} />
         </div>
       </div>
+      </>
+      )}
     </HRLayout>
   );
 }
