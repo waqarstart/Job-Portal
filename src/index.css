@@ -2,6 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
+html {
+  /* Always reserve space for the scrollbar so it appearing/disappearing
+     (e.g. when a modal briefly changes page height) never shifts layout
+     or causes a visible flash. */
+  scrollbar-gutter: stable;
+}
+
 body {
   margin: 0;
   font-family: system-ui, "Segoe UI", Roboto, sans-serif;

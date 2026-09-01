@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import { getJob } from "../services/jobService";
 import { applyToJob } from "../services/applicationService";
@@ -414,7 +414,7 @@ function ShareDropdown({ jobTitle, jobId }) {
     <div className="relative w-full">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center justify-center gap-2 rounded-xl border border-gray-200 px-5 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition"
+        className="w-full flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-medium text-gray-600 transition-all duration-150 hover:scale-[1.03] hover:bg-blue-50 hover:text-blue-600"
       >
         <HiOutlineShare className="h-4 w-4" />
         {copied ? "Copied!" : "Share"}
@@ -590,6 +590,11 @@ function CvDropdown({
 export default function JobDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // If we arrived here from the candidate's "My Applications" page, the
+  // back button should return there (not to the public job listing).
+  const cameFromApplications = location.state?.from === "applications";
 
   const { isLoggedIn, user } = useAuth();
 
@@ -1008,14 +1013,23 @@ export default function JobDetail() {
       <div className="mx-auto max-w-5xl px-4 sm:px-6 py-6">
 
         {/* Back */}
-        <button
-          onClick={() => navigate(-1)}
-          className="flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 transition mb-5"
-        >
-          <HiOutlineArrowLeft className="h-4 w-4" />
-
-          Back to Jobs
-        </button>
+        {cameFromApplications ? (
+          <button
+            onClick={() => navigate("/dashboard/applications")}
+            className="flex items-center gap-1.5 rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition mb-5"
+          >
+            <HiOutlineArrowLeft className="h-4 w-4" />
+            Back to Dashboard
+          </button>
+        ) : (
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-1.5 rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition mb-5"
+          >
+            <HiOutlineArrowLeft className="h-4 w-4" />
+            Back to Jobs
+          </button>
+        )}
 
         {/* ── Top card ── */}
         <div className="rounded-2xl border border-gray-100 bg-white shadow-sm p-6 mb-5">
