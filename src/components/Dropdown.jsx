@@ -20,8 +20,8 @@ export default function Dropdown({ value, onChange, options, className = "", but
 
       {open && (
         <>
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full z-20 mt-1 max-h-64 w-full min-w-[10rem] overflow-y-auto overflow-x-hidden rounded-xl border border-gray-100 bg-white py-1 shadow-xl">
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-full z-50 mt-1 max-h-64 w-full min-w-[10rem] overflow-y-auto overflow-x-hidden rounded-xl border border-gray-100 bg-white py-1 shadow-xl">
             {options.map((opt) => (
               <button
                 key={opt.value}

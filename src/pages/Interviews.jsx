@@ -612,7 +612,9 @@ export default function Interviews() {
 
                       {Number.isFinite(rating) && (
                         <div className="mt-3">
-                          <span className="inline-flex rounded-full bg-green-50 px-3 py-1 text-xs font-semibold text-green-700">
+                          <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
+                            rating > 50 ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
+                          }`}>
                             CV Rating: {rating}/100
                           </span>
                         </div>

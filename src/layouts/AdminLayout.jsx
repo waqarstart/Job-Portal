@@ -60,8 +60,8 @@ export default function AdminLayout({ children, title }) {
     <div className="flex h-screen overflow-hidden bg-gray-50">
       <aside className="flex h-screen w-64 shrink-0 flex-col overflow-y-auto border-r bg-white">
         <Link to="/" className="flex items-center gap-2 px-6 py-5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 font-bold text-white">H</div>
-          <span className="text-lg font-bold text-blue-600">HireHub</span>
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 font-bold text-white">T</div>
+          <span className="text-lg font-bold text-blue-600">Tekky Job</span>
         </Link>
 
         <div className="mx-4 flex items-center gap-3 rounded-xl bg-gray-50 p-3">

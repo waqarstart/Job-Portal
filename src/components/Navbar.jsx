@@ -98,9 +98,9 @@ export default function Navbar() {
         {/* Logo — click reloads home */}
         <button onClick={handleLogoClick} className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-lg font-bold text-white">
-            H
+            T
           </div>
-          <span className="text-xl font-bold text-blue-600">HireHub</span>
+          <span className="text-xl font-bold text-blue-600">Tekky Job</span>
         </button>
 
         {/* Center nav */}

@@ -3,6 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import path from "path";
 import connectDB from "./config/db.js";
+import { startRejectedApplicationCleanup } from "./services/rejectedApplicationCleanup.js";
 
 import authRoutes from "./routes/authRoutes.js";
 import jobRoutes from "./routes/jobRoutes.js";
@@ -21,6 +22,7 @@ dotenv.config();
 dotenv.config({ path: path.resolve(process.cwd(), "../.env") });
 
 connectDB();
+startRejectedApplicationCleanup();
 
 const app = express();
 

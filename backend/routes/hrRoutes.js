@@ -372,9 +372,16 @@ router.get("/applicants", requireAuth, requireHR, async (req, res) => {
 router.patch("/applicants/:id/status", requireAuth, requireHR, async (req, res) => {
   try {
     const { status } = req.body;
+
+    const update = { status };
+    // Track when an application was rejected — a scheduled job auto-deletes
+    // rejected applications (and their CV) 10 days after this timestamp.
+    // Clear it if the status is ever changed away from "rejected".
+    update.rejectedAt = status === "rejected" ? new Date() : null;
+
     const app = await Application.findByIdAndUpdate(
       req.params.id,
-      { status },
+      update,
       { new: true }
     ).populate("job").populate("user", "name email");
 

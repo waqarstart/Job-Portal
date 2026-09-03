@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import Home from "../pages/Home";
 import FindJobs from "../pages/FindJobs";
 import JobDetail from "../pages/JobDetail";
+import CompanyDetail from "../pages/CompanyDetail";
 import Login from "../pages/Login";
 import Register from "../pages/Register";
 import ForgotPassword from "../pages/ForgotPassword";
@@ -53,6 +54,7 @@ export default function AppRoutes() {
         <Route path="/" element={<RootRedirect />} />
         <Route path="/find-jobs" element={<FindJobs />} />
         <Route path="/jobs/:id" element={<JobDetail />} />
+        <Route path="/companies/:name" element={<CompanyDetail />} />
 
         <Route path="/login" element={<Login />} />
 

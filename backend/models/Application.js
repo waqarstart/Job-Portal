@@ -92,6 +92,10 @@ const applicationSchema = new mongoose.Schema(
       default: "applied",
     },
 
+    // When the application was marked rejected — used by the cleanup job
+    // that auto-deletes rejected applications (and their CV) after 10 days
+    rejectedAt: { type: Date },
+
     // Where the candidate applied from (used for HR analytics)
     source: {
       type: String,

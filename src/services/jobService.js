@@ -15,6 +15,11 @@ export async function getTopCompanies(limit = 6) {
   return data;
 }
 
+export async function getCompanyDetail(name) {
+  const { data } = await api.get(`/jobs/companies/${encodeURIComponent(name)}`);
+  return data;
+}
+
 // Admin only
 export async function createJob(job) {
   const { data } = await api.post("/jobs", job);

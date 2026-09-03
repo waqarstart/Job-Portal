@@ -30,6 +30,17 @@ const FILE_BASE = (
   import.meta.env.VITE_API_URL || "http://localhost:5000/api"
 ).replace(/\/api$/, "");
 
+// CV rating color — 50+ is green, below 50 is red, everywhere a rating shows
+function ratingColors(rating) {
+  const good = rating >= 50;
+  return {
+    text: good ? "text-green-600" : "text-red-600",
+    badgeBg: good ? "bg-green-100" : "bg-red-100",
+    badgeText: good ? "text-green-700" : "text-red-700",
+    bar: good ? "bg-green-600" : "bg-red-600",
+  };
+}
+
 const STATUS_OPTIONS = [
   "applied","under_review","shortlisted","interviewed","selected","hired","rejected",
 ];
@@ -191,7 +202,7 @@ function CvEvalPanel({ application }) {
       <div className="flex items-center justify-between gap-3 mb-3">
         <p className="text-xs font-semibold text-gray-700">AI CV Evaluation</p>
         {typeof cvRating === "number" && (
-          <span className="rounded-full bg-indigo-100 px-3 py-0.5 text-xs font-bold text-indigo-700">
+          <span className={`rounded-full px-3 py-0.5 text-xs font-bold ${ratingColors(cvRating).badgeBg} ${ratingColors(cvRating).badgeText}`}>
             {cvRating}/100
           </span>
         )}
@@ -200,7 +211,7 @@ function CvEvalPanel({ application }) {
         <div className="mb-3">
           <div className="h-1.5 overflow-hidden rounded-full bg-gray-200">
             <div
-              className="h-full rounded-full bg-indigo-600 transition-all"
+              className={`h-full rounded-full transition-all ${ratingColors(cvRating).bar}`}
               style={{ width: `${Math.min(Math.max(cvRating, 0), 100)}%` }}
             />
           </div>
@@ -523,10 +534,10 @@ export default function HRApplicants() {
                 <div className="min-w-0">
                   {typeof app.cvRating === "number" ? (
                     <div>
-                      <p className="text-sm font-bold text-indigo-600 mb-1">{app.cvRating}/100</p>
+                      <p className={`text-sm font-bold mb-1 ${ratingColors(app.cvRating).text}`}>{app.cvRating}/100</p>
                       <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
                         <div
-                          className="h-full rounded-full bg-indigo-500 transition-all"
+                          className={`h-full rounded-full transition-all ${ratingColors(app.cvRating).bar}`}
                           style={{ width: `${Math.min(Math.max(app.cvRating, 0), 100)}%` }}
                         />
                       </div>
@@ -627,7 +638,7 @@ export default function HRApplicants() {
                     <span>{app.job?.title || "—"}</span>
                     {app.job?.city && <span>· {app.job.city}</span>}
                     {typeof app.cvRating === "number" && (
-                      <span className="text-indigo-600 font-medium">CV {app.cvRating}/100</span>
+                      <span className={`font-medium ${ratingColors(app.cvRating).text}`}>CV {app.cvRating}/100</span>
                     )}
                   </div>
                   <p className="mt-1 text-[10px] text-gray-400">

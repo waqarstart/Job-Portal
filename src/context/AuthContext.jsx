@@ -26,7 +26,14 @@ export function AuthProvider({ children }) {
 
   function logout() {
     auth.logout();
-    setUser(null);
+    // Note: we deliberately do NOT call setUser(null) here. Doing so would
+    // trigger a React re-render while still on the current page, and any
+    // ProtectedRoute on that page would immediately client-side redirect to
+    // /login (since user becomes null) — causing a one-frame flash of the
+    // Login page before the browser finishes navigating to Home below.
+    // Skipping it avoids that extra render entirely; the full page reload
+    // (window.location.href) wipes all React/context state anyway.
+    window.location.href = "/";
   }
 
   return (

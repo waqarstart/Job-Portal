@@ -14,6 +14,8 @@ import {
   FaFacebookF, FaTwitter, FaLinkedinIn, FaInstagram,
 } from "react-icons/fa";
 import Navbar from "../components/Navbar";
+import Dropdown from "../components/Dropdown";
+import CityAutocomplete from "../components/CityAutocomplete";
 import { searchJobs, getTopCompanies } from "../services/jobService";
 import { getSavedJobs, saveJob, unsaveJob } from "../services/savedJobService";
 import { subscribeNewsletter } from "../services/newsletterService";
@@ -26,6 +28,11 @@ const CATEGORIES = [
   { label: "Data Science",          short: "Data",                  count: "95+",  icon: HiOutlineChartBar,        color: "bg-green-50 text-green-600" },
   { label: "Finance",               short: "Finance",                count: "150+", icon: HiOutlineCurrencyDollar,  color: "bg-amber-50 text-amber-600" },
   { label: "HR & Admin",            short: "HR",                     count: "100+", icon: HiOutlineUsers,           color: "bg-cyan-50 text-cyan-600" },
+];
+
+const CATEGORY_OPTIONS = [
+  { value: "", label: "All Categories" },
+  ...CATEGORIES.map((c) => ({ value: c.short, label: c.label })),
 ];
 
 const POPULAR_SEARCHES = [
@@ -41,8 +48,8 @@ const RESOURCES = [
 ];
 
 const TESTIMONIALS = [
-  { name: "Ayesha Khan", role: "Frontend Developer at Teckdev", quote: "HireHub helped me find the perfect job within a week. The platform is easy to use and very effective!" },
-  { name: "Bilal Ahmed", role: "Backend Engineer at GCS", quote: "I got more interviews through HireHub than any other job portal. Highly recommended!" },
+  { name: "Ayesha Khan", role: "Frontend Developer at Teckdev", quote: "Tekky Job helped me find the perfect job within a week. The platform is easy to use and very effective!" },
+  { name: "Bilal Ahmed", role: "Backend Engineer at GCS", quote: "I got more interviews through Tekky Job than any other job portal. Highly recommended!" },
   { name: "Sara Malik", role: "UI/UX Designer at InnovateX", quote: "The job recommendations are spot on! It saved me so much time in my search." },
   { name: "Omar Farooq", role: "Data Analyst at Soft Solutions", quote: "Clean interface, real jobs, and a straightforward application process. Exactly what I needed." },
 ];
@@ -63,6 +70,21 @@ function timeAgo(date) {
   if (days === 0) return "Today";
   if (days === 1) return "1 day ago";
   return `${days} days ago`;
+}
+
+function formatCity(city = "") {
+  if (!city) return "";
+  const titled = city
+    .split(/(\s|,)/)
+    .map((w) => (w === "," || w === " " ? w : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()))
+    .join("");
+  return titled.includes(",") || titled.toLowerCase() === "remote" ? titled : `${titled}, Pakistan`;
+}
+
+function formatSalary(salary = "") {
+  if (!salary) return "";
+  // Add thousand-separators to any run of digits (e.g. "150000" → "150,000")
+  return salary.replace(/\d{4,}/g, (n) => Number(n).toLocaleString("en-US"));
 }
 
 export default function Home() {
@@ -162,7 +184,7 @@ export default function Home() {
       <Navbar />
 
       {/* ── Hero ── */}
-      <section className="bg-gray-50 px-6 pt-16 pb-10 relative overflow-hidden">
+      <section className="bg-gray-50 px-6 pt-16 pb-10 relative">
         <div className="mx-auto max-w-6xl grid grid-cols-1 lg:grid-cols-2 items-center gap-12">
 
           <div>
@@ -191,7 +213,7 @@ export default function Home() {
           </div>
 
           {/* Decorative illustration */}
-          <div className="relative hidden lg:flex items-center justify-center h-72">
+          <div className="relative hidden lg:flex items-center justify-center h-72 overflow-hidden">
             <div className="absolute h-56 w-40 rounded-2xl bg-white shadow-lg border border-gray-100 -rotate-6" />
             <div className="absolute h-40 w-56 rounded-2xl bg-blue-900 shadow-xl flex items-center justify-center">
               <HiOutlineBriefcase className="h-16 w-16 text-white/90" />
@@ -222,27 +244,17 @@ export default function Home() {
 
             <div className="hidden md:block w-px bg-gray-200 my-2" />
 
-            <select
+            <Dropdown
               value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="rounded-xl md:rounded-none bg-transparent px-4 py-2.5 text-sm text-gray-600 outline-none border border-gray-200 md:border-none"
-            >
-              <option value="">All Categories</option>
-              {CATEGORIES.map((c) => (
-                <option key={c.label} value={c.short}>{c.label}</option>
-              ))}
-            </select>
+              onChange={setCategory}
+              options={CATEGORY_OPTIONS}
+              fullWidth
+              className="md:w-56 my-1"
+            />
 
             <div className="hidden md:block w-px bg-gray-200 my-2" />
 
-            <div className="flex flex-1 items-center gap-2 px-4 py-2.5">
-              <HiOutlineMapPin className="h-5 w-5 shrink-0 text-gray-400" />
-              <input
-                type="text" value={city} onChange={(e) => setCity(e.target.value)}
-                placeholder="City, province or remote"
-                className="flex-1 min-w-0 bg-transparent text-sm text-gray-800 placeholder-gray-400 outline-none"
-              />
-            </div>
+            <CityAutocomplete value={city} onChange={setCity} />
 
             <button type="submit"
               className="rounded-xl bg-blue-600 px-8 py-3 text-sm font-semibold text-white hover:bg-blue-700 transition whitespace-nowrap">
@@ -338,9 +350,9 @@ export default function Home() {
                 <div
                   key={job._id}
                   onClick={() => navigate(`/jobs/${job._id}`)}
-                  className="flex flex-col sm:flex-row sm:items-center gap-3 px-5 py-4 hover:bg-gray-50 transition cursor-pointer"
+                  className="flex flex-col sm:flex-row sm:items-center gap-4 px-6 py-5 hover:bg-gray-50 transition cursor-pointer"
                 >
-                  <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white ${color}`}>
+                  <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-base font-bold text-white ${color}`}>
                     {initial}
                   </div>
 
@@ -350,22 +362,22 @@ export default function Home() {
                   </div>
 
                   {job.city && (
-                    <span className="flex items-center gap-1 text-xs text-gray-400 shrink-0">
-                      <HiOutlineMapPin className="h-3.5 w-3.5" />{job.city}
+                    <span className="flex items-center gap-1 text-xs text-gray-400 shrink-0 sm:w-36">
+                      <HiOutlineMapPin className="h-3.5 w-3.5 shrink-0" />{formatCity(job.city)}
                     </span>
                   )}
 
                   {job.salary && (
-                    <span className="text-sm font-bold text-gray-800 shrink-0 sm:w-40">{job.salary}</span>
+                    <span className="text-sm font-bold text-gray-800 shrink-0 sm:w-44">{formatSalary(job.salary)}</span>
                   )}
 
                   {job.type && (
-                    <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-[11px] font-semibold text-blue-700 shrink-0 w-fit">
+                    <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700 shrink-0 w-fit">
                       {job.type}
                     </span>
                   )}
 
-                  <span className="text-[11px] text-gray-300 shrink-0">{timeAgo(job.createdAt)}</span>
+                  <span className="text-xs text-gray-300 shrink-0 sm:w-20 text-right">{timeAgo(job.createdAt)}</span>
 
                   <button
                     onClick={(e) => handleToggleSave(e, job._id)}
@@ -413,7 +425,7 @@ export default function Home() {
                 return (
                   <button
                     key={c.company}
-                    onClick={() => navigate(`/find-jobs?title=${encodeURIComponent("")}&company=${encodeURIComponent(c.company)}`)}
+                    onClick={() => navigate(`/companies/${encodeURIComponent(c.company)}`)}
                     className="flex flex-col items-center gap-2 rounded-2xl border border-gray-200 bg-white px-3 py-5 shadow-sm hover:border-blue-300 hover:shadow-md transition text-center"
                   >
                     <div className={`flex h-11 w-11 items-center justify-center rounded-xl text-base font-bold text-white ${color}`}>
@@ -531,8 +543,8 @@ export default function Home() {
 
           <div>
             <div className="flex items-center gap-2 mb-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-lg font-bold text-white">H</div>
-              <span className="text-lg font-bold text-white">HireHub</span>
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-lg font-bold text-white">T</div>
+              <span className="text-lg font-bold text-white">Tekky Job</span>
             </div>
             <p className="text-sm text-gray-400 leading-relaxed">
               Your trusted partner in finding the perfect job. Explore opportunities, connect with top companies, and build your future.
@@ -582,7 +594,7 @@ export default function Home() {
             <p className="text-white font-semibold mb-3">Contact Us</p>
             <ul className="space-y-3 text-sm">
               <li className="flex items-center gap-2">
-                <HiOutlineEnvelope className="h-4 w-4 shrink-0" /> support@hirehub.com
+                <HiOutlineEnvelope className="h-4 w-4 shrink-0" /> support@tekkyjob.com
               </li>
               <li className="flex items-center gap-2">
                 <HiOutlineChatBubbleBottomCenterText className="h-4 w-4 shrink-0" /> +92 300 1234567
@@ -595,7 +607,7 @@ export default function Home() {
         </div>
 
         <div className="mx-auto max-w-6xl mt-10 pt-6 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500">
-          <p>© {new Date().getFullYear()} HireHub. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} Tekky Job. All rights reserved.</p>
           <div className="flex items-center gap-5">
             <a href="#" className="hover:text-white transition">Privacy Policy</a>
             <a href="#" className="hover:text-white transition">Terms of Service</a>

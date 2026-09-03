@@ -17,7 +17,7 @@ function getTransporter() {
 
 export async function sendPasswordResetEmail(toEmail, resetUrl) {
   const mailOptions = {
-    from: `"HireHub" <${process.env.EMAIL_USER}>`,
+    from: `"Tekky Job" <${process.env.EMAIL_USER}>`,
     to: toEmail,
     subject: "Reset your Job Portal password",
     html: `

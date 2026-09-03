@@ -361,7 +361,9 @@ export default function Admin() {
 
                     {typeof app.cvRating ===
                     "number" ? (
-                      <div className="rounded-full bg-blue-600 px-4 py-2 text-lg font-bold text-white">
+                      <div className={`rounded-full px-4 py-2 text-lg font-bold text-white ${
+                        app.cvRating >= 50 ? "bg-green-600" : "bg-red-600"
+                      }`}>
                         {app.cvRating}/100
                       </div>
                     ) : (

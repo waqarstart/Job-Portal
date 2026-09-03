@@ -92,7 +92,7 @@ export default function CandidateLayout({ children, title, profilePicture: picPr
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white">
             <HiOutlineSquares2X2 className="h-5 w-5" />
           </div>
-          <span className="text-lg font-bold text-blue-600">HireHub</span>
+          <span className="text-lg font-bold text-blue-600">Tekky Job</span>
         </Link>
 
         {/* Profile pic in sidebar — updates when candidate uploads */}

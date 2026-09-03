@@ -50,8 +50,8 @@ export default function Register() {
     <main className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-10">
       <div className="w-full max-w-md rounded-2xl border bg-white p-8 shadow-sm">
         <Link to="/" className="flex items-center justify-center gap-2 mb-6">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 font-bold text-white">H</div>
-          <span className="text-lg font-bold text-gray-900">HireHub</span>
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 font-bold text-white">T</div>
+          <span className="text-lg font-bold text-gray-900">Tekky Job</span>
         </Link>
 
         <h1 className="text-2xl font-bold text-gray-900 text-center">Create your account</h1>

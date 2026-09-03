@@ -1,5 +1,6 @@
 import express from "express";
 import Job from "../models/Job.js";
+import Company from "../models/Company.js";
 import { requireAuth, requireAdmin } from "../middleware/auth.js";
 
 const router = express.Router();
@@ -78,6 +79,30 @@ router.get("/companies/top", async (req, res) => {
     res.status(500).json({
       message: err.message,
     });
+  }
+});
+
+// Public: a single company's profile (if HR filled one in) + its active jobs
+router.get("/companies/:name", async (req, res) => {
+  try {
+    const name = req.params.name;
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+    const [company, jobs] = await Promise.all([
+      Company.findOne({ name: { $regex: `^${escaped}$`, $options: "i" } }),
+      Job.find({
+        company: { $regex: `^${escaped}$`, $options: "i" },
+        status: "active",
+      }).sort({ createdAt: -1 }),
+    ]);
+
+    res.json({
+      name,
+      company: company || null,
+      jobs,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 });
 
