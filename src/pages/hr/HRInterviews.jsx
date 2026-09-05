@@ -76,9 +76,7 @@ export default function HRInterviews() {
       hour: "10",
       minute: "00",
       period: "AM",
-      durationMinutes: 45,
       type: "Technical Round",
-      interviewerCount: 2,
     };
   }
 
@@ -189,10 +187,8 @@ export default function HRInterviews() {
     try {
       await scheduleInterview(form.applicationId, {
         interviewDate: interviewDate.toISOString(),
-        interviewDurationMinutes: Number(form.durationMinutes) || 45,
         interviewType: form.type,
         interviewMode: "AI Interview",
-        interviewerCount: Number(form.interviewerCount) || 1,
         interviewStatus: "pending",
       });
       setShowScheduleModal(false);
@@ -332,10 +328,6 @@ export default function HRInterviews() {
                   <HiOutlineVideoCamera className="h-3.5 w-3.5" />
                   AI Interview
                 </span>
-                <span className="flex items-center gap-1.5 rounded-lg border bg-gray-50 px-3 py-1.5 text-xs font-medium text-gray-700">
-                  <HiOutlineUserGroup className="h-3.5 w-3.5 text-blue-500" />
-                  {app.interviewerCount || 1} Interviewer{(app.interviewerCount || 1) > 1 ? "s" : ""}
-                </span>
               </div>
 
               {isCancelled && app.interviewCancelReason && (
@@ -452,7 +444,9 @@ export default function HRInterviews() {
                   buttonClassName="w-full"
                 />
                 {schedulable.length === 0 && (
-                  <p className="mt-1 text-xs text-gray-400">All candidates already have interviews scheduled.</p>
+                  <p className="mt-1 text-xs text-gray-400">
+                    No candidates available — only applicants with a CV rating above 50 (and no interview scheduled yet) show up here.
+                  </p>
                 )}
               </div>
 
@@ -497,29 +491,6 @@ export default function HRInterviews() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-sm font-medium text-gray-700">Duration (min)</label>
-                  <input
-                    type="number"
-                    min="15"
-                    value={form.durationMinutes}
-                    onChange={(e) => setForm({ ...form, durationMinutes: e.target.value })}
-                    className="mt-1 w-full rounded-lg border px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-700">Interviewers</label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={form.interviewerCount}
-                    onChange={(e) => setForm({ ...form, interviewerCount: e.target.value })}
-                    className="mt-1 w-full rounded-lg border px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-
               <div>
                 <label className="text-sm font-medium text-gray-700">Interview Type</label>
                 <input
@@ -533,7 +504,7 @@ export default function HRInterviews() {
 
               <div className="flex items-center gap-2 rounded-lg bg-blue-50 px-4 py-3 text-sm text-blue-700">
                 <HiOutlineSparkles className="h-4 w-4 shrink-0" />
-                The candidate completes this as an AI video interview — no meeting link needed.
+                The candidate completes this as a short (~2 min) AI video interview — no meeting link needed.
               </div>
 
               <div className="flex gap-3 pt-2">

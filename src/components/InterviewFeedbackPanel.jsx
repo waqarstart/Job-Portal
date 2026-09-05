@@ -23,16 +23,16 @@ function interviewStatusLabel(status) {
 /**
  * Compact badge for table rows.
  */
-export function InterviewStatusBadge({ status, className = "" }) {
+export function InterviewStatusBadge({ status, className = "", short = false }) {
   const style =
     INTERVIEW_STATUS_STYLES[status] ||
     "bg-gray-50 text-gray-600 border-gray-200";
 
   return (
     <span
-      className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-semibold capitalize ${style} ${className}`}
+      className={`inline-flex items-center whitespace-nowrap rounded-full border px-2.5 py-0.5 text-[10px] font-semibold capitalize ${style} ${className}`}
     >
-      Interview: {interviewStatusLabel(status)}
+      {short ? interviewStatusLabel(status) : `Interview: ${interviewStatusLabel(status)}`}
     </span>
   );
 }

@@ -67,6 +67,38 @@ function avatarColor(name = "") {
   return AVATAR_COLORS[n % AVATAR_COLORS.length];
 }
 
+// Candidate avatar — shows their uploaded profile photo when available,
+// falling back to a colored initial circle.
+function CandidateAvatar({ user, size = "h-9 w-9" }) {
+  const name = user?.name || "?";
+  if (user?.profilePicture) {
+    return (
+      <img
+        src={`${FILE_BASE}${user.profilePicture}`}
+        alt={name}
+        className={`${size} shrink-0 rounded-full object-cover border border-gray-100`}
+      />
+    );
+  }
+  return (
+    <div className={`flex ${size} shrink-0 items-center justify-center rounded-full text-sm font-bold text-white ${avatarColor(name)}`}>
+      {name[0].toUpperCase()}
+    </div>
+  );
+}
+
+// Interview status shown as its own column — "—" when not applicable yet.
+function InterviewCell({ app }) {
+  const applicable =
+    app.interviewStatus ||
+    (typeof app.cvRating === "number" && app.cvRating > 50 && app.status !== "rejected");
+
+  if (!applicable) return <span className="text-xs text-gray-300">—</span>;
+
+  const status = app.interviewStatus || (app.status === "interviewed" ? "completed" : "pending");
+  return <InterviewStatusBadge status={status} short />;
+}
+
 function experienceLabel(years) {
   if (!years && years !== 0) return { text: "—", level: "unknown" };
   if (years < 1)  return { text: `${(years * 12).toFixed(0)} mo`, level: "Fresher" };
@@ -146,9 +178,9 @@ function ActionMenu({ app, onStatusChange, openUp }) {
     <div className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 transition"
+        className="rounded-lg p-2 text-gray-500 transition-all duration-150 hover:scale-110 hover:bg-gray-100"
       >
-        <HiOutlineEllipsisVertical className="h-5 w-5" />
+        <HiOutlineEllipsisVertical className="h-4 w-4" />
       </button>
 
       {open && (
@@ -457,227 +489,262 @@ export default function HRApplicants() {
       {/* ── Table ── */}
       <div className="rounded-b-2xl border border-t-0 border-gray-100 bg-white shadow-sm overflow-hidden">
 
-        {/* Table head */}
-        <div className="hidden md:grid md:grid-cols-[2fr_1.6fr_1fr_1.6fr_1.2fr_1.2fr_100px] items-center border-b border-gray-100 bg-gray-50/70 px-5 py-3 text-xs font-semibold uppercase tracking-wide text-gray-400">
-          <div>Candidate</div>
-          <div>Email</div>
-          <div>Experience</div>
-          <div>Applied For</div>
-          <button
-            onClick={() => setSortBy(sortBy === "cv_desc" ? "cv_asc" : "cv_desc")}
-            className="flex items-center gap-1 cursor-pointer hover:text-blue-600 transition select-none"
-          >
-            CV Rating
-            <span className="flex flex-col">
-              <HiMiniChevronUpDown className={`h-3 w-3 ${sortBy === "cv_desc" || sortBy === "cv_asc" ? "text-blue-600" : ""}`} />
-            </span>
-          </button>
-          <div className="flex items-center gap-1 cursor-pointer select-none"
-            onClick={() => setSortBy(sortBy === "date_desc" ? "date_asc" : "date_desc")}>
-            Applied Date <HiMiniChevronUpDown className={`h-3 w-3 ${sortBy === "date_desc" || sortBy === "date_asc" ? "text-blue-600" : ""}`} />
-          </div>
-          <div className="text-right">Actions</div>
-        </div>
+        {/* Horizontally-scrollable region (desktop): Candidate column stays fixed
+            (sticky), everything from Email through Actions scrolls together. */}
+        <div className="hidden md:block overflow-x-auto">
+          <div className="min-w-[1130px]">
 
-        {loading && (
-          <div className="px-5 py-12 text-center text-sm text-gray-400">Loading applicants…</div>
-        )}
+            {/* Table head */}
+            <div className="grid grid-cols-[220px_200px_140px_200px_140px_150px_110px_100px] items-center border-b border-gray-100 bg-gray-50/70 text-xs font-semibold uppercase tracking-wide text-gray-400">
+              <div className="sticky left-0 z-10 bg-gray-50/70 px-5 py-3">Candidate</div>
+              <div className="px-3 py-3">Email</div>
+              <div className="px-3 py-3">Experience</div>
+              <div className="px-3 py-3">Applied For</div>
+              <button
+                onClick={() => setSortBy(sortBy === "cv_desc" ? "cv_asc" : "cv_desc")}
+                className="flex items-center gap-1 cursor-pointer hover:text-blue-600 transition select-none px-3 py-3"
+              >
+                CV Rating
+                <span className="flex flex-col">
+                  <HiMiniChevronUpDown className={`h-3 w-3 ${sortBy === "cv_desc" || sortBy === "cv_asc" ? "text-blue-600" : ""}`} />
+                </span>
+              </button>
+              <div className="flex items-center gap-1 cursor-pointer select-none px-3 py-3"
+                onClick={() => setSortBy(sortBy === "date_desc" ? "date_asc" : "date_desc")}>
+                Applied Date <HiMiniChevronUpDown className={`h-3 w-3 ${sortBy === "date_desc" || sortBy === "date_asc" ? "text-blue-600" : ""}`} />
+              </div>
+              <div className="px-3 py-3">Interview</div>
+              <div className="text-right px-5 py-3">Actions</div>
+            </div>
 
-        {!loading && paginated.map((app, index) => {
-          const exp    = experienceLabel(app.user?.yearsOfExperience);
-          const isExp  = expandedId === app._id;
-          // Open upward for last 2 rows
-          const openUp = index >= paginated.length - 2;
+            {loading && (
+              <div className="px-5 py-12 text-center text-sm text-gray-400">Loading applicants…</div>
+            )}
 
-          return (
-            <div key={app._id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/40 transition">
+            {!loading && paginated.map((app, index) => {
+              const exp    = experienceLabel(app.user?.yearsOfExperience);
+              const isExp  = expandedId === app._id;
+              // Open upward for last 2 rows
+              const openUp = index >= paginated.length - 2;
 
-              {/* ── Desktop row ── */}
-              <div className="hidden md:grid md:grid-cols-[2fr_1.6fr_1fr_1.6fr_1.2fr_1.2fr_100px] items-center px-5 py-3.5 gap-3">
+              return (
+                <div key={app._id} className="group border-b border-gray-50 last:border-0 hover:bg-gray-50/40 transition">
 
-                {/* Candidate — no CV rating here */}
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white ${avatarColor(app.user?.name)}`}>
-                    {(app.user?.name || "?")[0].toUpperCase()}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-gray-800">{app.user?.name || "—"}</p>
-                  </div>
-                </div>
+                  {/* ── Desktop row ── */}
+                  <div className="grid grid-cols-[220px_200px_140px_200px_140px_150px_110px_100px] items-center">
 
-                {/* Email */}
-                <div className="min-w-0">
-                  <p className="truncate text-sm text-gray-500">{app.user?.email || "—"}</p>
-                </div>
-
-                {/* Experience */}
-                <div>
-                  <p className="text-sm font-medium text-gray-700">{exp.text}</p>
-                  <div className="flex items-center gap-1 mt-0.5">
-                    <span className={`h-1.5 w-1.5 rounded-full ${LEVEL_DOT[exp.level]}`} />
-                    <span className="text-[10px] text-gray-400">{exp.level}</span>
-                  </div>
-                </div>
-
-                {/* Applied for */}
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-gray-800 truncate">{app.job?.title || "—"}</p>
-                  {app.job?.city && (
-                    <div className="flex items-center gap-1 mt-0.5">
-                      <HiOutlineMapPin className="h-3 w-3 text-gray-400 shrink-0" />
-                      <span className="text-[10px] text-gray-400 truncate">{app.job.city}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* CV Rating column */}
-                <div className="min-w-0">
-                  {typeof app.cvRating === "number" ? (
-                    <div>
-                      <p className={`text-sm font-bold mb-1 ${ratingColors(app.cvRating).text}`}>{app.cvRating}/100</p>
-                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
-                        <div
-                          className={`h-full rounded-full transition-all ${ratingColors(app.cvRating).bar}`}
-                          style={{ width: `${Math.min(Math.max(app.cvRating, 0), 100)}%` }}
-                        />
+                    {/* Candidate — sticky, no CV rating here */}
+                    <div className="sticky left-0 z-10 flex items-center gap-3 min-w-0 bg-white group-hover:bg-gray-50/40 transition px-5 py-3.5">
+                      <CandidateAvatar user={app.user} />
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-gray-800">{app.user?.name || "—"}</p>
                       </div>
                     </div>
-                  ) : (
-                    <span className="text-xs text-gray-300">—</span>
-                  )}
-                </div>
 
-                {/* Applied date */}
-                <div>
-                  <p className="text-sm text-gray-600">
-                    {new Date(app.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
-                  </p>
-                  <p className="text-[10px] text-gray-400">
-                    {new Date(app.createdAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
-                  </p>
-                  {(app.interviewStatus ||
-                    (typeof app.cvRating === "number" &&
-                      app.cvRating > 50 &&
-                      app.status !== "rejected")) && (
-                    <div className="mt-1">
-                      <InterviewStatusBadge
-                        status={
-                          app.interviewStatus ||
-                          (app.status === "interviewed"
-                            ? "completed"
-                            : "pending")
-                        }
-                      />
+                    {/* Email */}
+                    <div className="min-w-0 px-3 py-3.5">
+                      <p className="truncate text-sm text-gray-500">{app.user?.email || "—"}</p>
                     </div>
-                  )}
-                </div>
 
-                {/* Actions */}
-                <div className="flex items-center justify-end gap-1.5">
-                  {/* View — slightly wider */}
-                  <button
-                    onClick={() => setExpandedId(isExp ? null : app._id)}
-                    title="View Details"
-                    className={`flex h-8 w-10 items-center justify-center rounded-lg border transition ${
-                      isExp ? "border-blue-300 bg-blue-50 text-blue-600" : "border-gray-200 text-gray-500 hover:bg-gray-50"
-                    }`}
-                  >
-                    <HiOutlineEye className="h-4 w-4" />
-                  </button>
-
-                  {/* Download — slightly wider */}
-                  {app.cvUrl ? (
-                    <a
-                      href={`${FILE_BASE}${app.cvUrl}`}
-                      download target="_blank" rel="noreferrer"
-                      title="Download CV"
-                      className="flex h-8 w-10 items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 transition"
-                    >
-                      <HiOutlineArrowDownTray className="h-4 w-4" />
-                    </a>
-                  ) : (
-                    <div className="flex h-8 w-10 items-center justify-center rounded-lg border border-gray-100 text-gray-300" title="No CV">
-                      <HiOutlineArrowDownTray className="h-4 w-4" />
+                    {/* Experience */}
+                    <div className="px-3 py-3.5">
+                      <p className="text-sm font-medium text-gray-700">{exp.text}</p>
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <span className={`h-1.5 w-1.5 rounded-full ${LEVEL_DOT[exp.level]}`} />
+                        <span className="text-[10px] text-gray-400">{exp.level}</span>
+                      </div>
                     </div>
-                  )}
 
-                  <ActionMenu app={app} onStatusChange={handleStatus} openUp={openUp} />
-                </div>
-              </div>
-
-              {/* ── Mobile card ── */}
-              <div className="flex md:hidden items-start gap-3 px-4 py-4">
-                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white ${avatarColor(app.user?.name)}`}>
-                  {(app.user?.name || "?")[0].toUpperCase()}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-gray-800">{app.user?.name || "—"}</p>
-                      <p className="truncate text-xs text-gray-400">{app.user?.email || "—"}</p>
+                    {/* Applied for */}
+                    <div className="min-w-0 px-3 py-3.5">
+                      <p className="text-sm font-semibold text-gray-800 truncate">{app.job?.title || "—"}</p>
+                      {app.job?.city && (
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <HiOutlineMapPin className="h-3 w-3 text-gray-400 shrink-0" />
+                          <span className="text-[10px] text-gray-400 truncate">{app.job.city}</span>
+                        </div>
+                      )}
                     </div>
-                    <div className="flex items-center gap-1 shrink-0">
+
+                    {/* CV Rating column */}
+                    <div className="min-w-0 px-3 py-3.5">
+                      {typeof app.cvRating === "number" ? (
+                        <div>
+                          <p className={`text-sm font-bold mb-1 ${ratingColors(app.cvRating).text}`}>{app.cvRating}/100</p>
+                          <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
+                            <div
+                              className={`h-full rounded-full transition-all ${ratingColors(app.cvRating).bar}`}
+                              style={{ width: `${Math.min(Math.max(app.cvRating, 0), 100)}%` }}
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-300">—</span>
+                      )}
+                    </div>
+
+                    {/* Applied date */}
+                    <div className="px-3 py-3.5">
+                      <p className="text-sm text-gray-600">
+                        {new Date(app.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+                      </p>
+                      <p className="text-[10px] text-gray-400">
+                        {new Date(app.createdAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
+                      </p>
+                    </div>
+
+                    {/* Interview column */}
+                    <div className="px-3 py-3.5">
+                      <InterviewCell app={app} />
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center justify-end gap-1 px-5 py-3.5">
                       <button
                         onClick={() => setExpandedId(isExp ? null : app._id)}
-                        className={`flex h-7 w-8 items-center justify-center rounded-lg border transition ${
-                          isExp ? "border-blue-300 bg-blue-50 text-blue-600" : "border-gray-200 text-gray-500"
+                        title="View Details"
+                        className={`rounded-lg p-2 transition-all duration-150 hover:scale-110 ${
+                          isExp ? "bg-blue-50 text-blue-600" : "text-gray-500 hover:bg-blue-50 hover:text-blue-600"
                         }`}
                       >
-                        <HiOutlineEye className="h-3.5 w-3.5" />
+                        <HiOutlineEye className="h-4 w-4" />
                       </button>
-                      {app.cvUrl && (
-                        <a href={`${FILE_BASE}${app.cvUrl}`} download target="_blank" rel="noreferrer"
-                          className="flex h-7 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 transition">
-                          <HiOutlineArrowDownTray className="h-3.5 w-3.5" />
+
+                      {app.cvUrl ? (
+                        <a
+                          href={`${FILE_BASE}${app.cvUrl}`}
+                          download target="_blank" rel="noreferrer"
+                          title="Download CV"
+                          className="rounded-lg p-2 text-gray-500 transition-all duration-150 hover:scale-110 hover:bg-blue-50 hover:text-blue-600"
+                        >
+                          <HiOutlineArrowDownTray className="h-4 w-4" />
                         </a>
+                      ) : (
+                        <div className="rounded-lg p-2 text-gray-300" title="No CV">
+                          <HiOutlineArrowDownTray className="h-4 w-4" />
+                        </div>
                       )}
+
                       <ActionMenu app={app} onStatusChange={handleStatus} openUp={openUp} />
                     </div>
                   </div>
-                  <div className="mt-1.5 flex flex-wrap gap-2 text-xs text-gray-500">
-                    <span>{app.job?.title || "—"}</span>
-                    {app.job?.city && <span>· {app.job.city}</span>}
-                    {typeof app.cvRating === "number" && (
-                      <span className={`font-medium ${ratingColors(app.cvRating).text}`}>CV {app.cvRating}/100</span>
-                    )}
-                  </div>
-                  <p className="mt-1 text-[10px] text-gray-400">
-                    {new Date(app.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
-                  </p>
-                </div>
-              </div>
 
-              {/* ── Expanded detail ── */}
-              {isExp && (
-                <div className="mx-4 md:mx-5 mb-4 rounded-xl border border-gray-100 bg-gray-50/60 p-4">
-                  <div className="flex flex-wrap items-center gap-2 mb-3">
-                    <span className={`rounded-full border px-3 py-1 text-xs font-semibold capitalize ${STATUS_STYLES[app.status] || "bg-gray-100 text-gray-600"}`}>
-                      {app.status.replace(/_/g, " ")}
-                    </span>
-                    <select
-                      value={app.status}
-                      onChange={(e) => handleStatus(app._id, e.target.value)}
-                      className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs outline-none focus:border-blue-500 text-gray-700"
-                    >
-                      {STATUS_OPTIONS.map((s) => (
-                        <option key={s} value={s}>{s.replace(/_/g, " ")}</option>
-                      ))}
-                    </select>
-                    {app.user?.skills?.length > 0 && (
-                      <div className="flex flex-wrap gap-1">
-                        {app.user.skills.slice(0, 6).map((sk) => (
-                          <span key={sk} className="rounded-full bg-white border border-gray-200 px-2 py-0.5 text-[10px] text-gray-600">{sk}</span>
-                        ))}
+                  {/* ── Expanded detail ── */}
+                  {isExp && (
+                    <div className="mx-4 md:mx-5 mb-4 rounded-xl border border-gray-100 bg-gray-50/60 p-4">
+                      <div className="flex flex-wrap items-center gap-2 mb-3">
+                        <span className={`rounded-full border px-3 py-1 text-xs font-semibold capitalize ${STATUS_STYLES[app.status] || "bg-gray-100 text-gray-600"}`}>
+                          {app.status.replace(/_/g, " ")}
+                        </span>
+                        <select
+                          value={app.status}
+                          onChange={(e) => handleStatus(app._id, e.target.value)}
+                          className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs outline-none focus:border-blue-500 text-gray-700"
+                        >
+                          {STATUS_OPTIONS.map((s) => (
+                            <option key={s} value={s}>{s.replace(/_/g, " ")}</option>
+                          ))}
+                        </select>
+                        {app.user?.skills?.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {app.user.skills.slice(0, 6).map((sk) => (
+                              <span key={sk} className="rounded-full bg-white border border-gray-200 px-2 py-0.5 text-[10px] text-gray-600">{sk}</span>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                  <CvEvalPanel application={app} />
-                  <InterviewFeedbackPanel application={app} />
+                      <CvEvalPanel application={app} />
+                      <InterviewFeedbackPanel application={app} />
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          );
-        })}
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ── Mobile cards (own layout, not part of the horizontal scroller) ── */}
+        <div className="md:hidden">
+          {loading && (
+            <div className="px-5 py-12 text-center text-sm text-gray-400">Loading applicants…</div>
+          )}
+          {!loading && paginated.map((app, index) => {
+            const isExp  = expandedId === app._id;
+            const openUp = index >= paginated.length - 2;
+
+            return (
+              <div key={`m-${app._id}`} className="border-b border-gray-50 last:border-0">
+                <div className="flex items-start gap-3 px-4 py-4">
+                  <CandidateAvatar user={app.user} size="h-10 w-10" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-gray-800">{app.user?.name || "—"}</p>
+                        <p className="truncate text-xs text-gray-400">{app.user?.email || "—"}</p>
+                      </div>
+                      <div className="flex items-center gap-0.5 shrink-0">
+                        <button
+                          onClick={() => setExpandedId(isExp ? null : app._id)}
+                          className={`rounded-lg p-1.5 transition-all duration-150 hover:scale-110 ${
+                            isExp ? "bg-blue-50 text-blue-600" : "text-gray-500 hover:bg-blue-50 hover:text-blue-600"
+                          }`}
+                        >
+                          <HiOutlineEye className="h-3.5 w-3.5" />
+                        </button>
+                        {app.cvUrl && (
+                          <a href={`${FILE_BASE}${app.cvUrl}`} download target="_blank" rel="noreferrer"
+                            className="rounded-lg p-1.5 text-gray-500 transition-all duration-150 hover:scale-110 hover:bg-blue-50 hover:text-blue-600">
+                            <HiOutlineArrowDownTray className="h-3.5 w-3.5" />
+                          </a>
+                        )}
+                        <ActionMenu app={app} onStatusChange={handleStatus} openUp={openUp} />
+                      </div>
+                    </div>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                      <span>{app.job?.title || "—"}</span>
+                      {app.job?.city && <span>· {app.job.city}</span>}
+                      {typeof app.cvRating === "number" && (
+                        <span className={`font-medium ${ratingColors(app.cvRating).text}`}>CV {app.cvRating}/100</span>
+                      )}
+                      <InterviewCell app={app} />
+                    </div>
+                    <p className="mt-1 text-[10px] text-gray-400">
+                      {new Date(app.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+                    </p>
+                  </div>
+                </div>
+
+                {isExp && (
+                  <div className="mx-4 mb-4 rounded-xl border border-gray-100 bg-gray-50/60 p-4">
+                    <div className="flex flex-wrap items-center gap-2 mb-3">
+                      <span className={`rounded-full border px-3 py-1 text-xs font-semibold capitalize ${STATUS_STYLES[app.status] || "bg-gray-100 text-gray-600"}`}>
+                        {app.status.replace(/_/g, " ")}
+                      </span>
+                      <select
+                        value={app.status}
+                        onChange={(e) => handleStatus(app._id, e.target.value)}
+                        className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs outline-none focus:border-blue-500 text-gray-700"
+                      >
+                        {STATUS_OPTIONS.map((s) => (
+                          <option key={s} value={s}>{s.replace(/_/g, " ")}</option>
+                        ))}
+                      </select>
+                      {app.user?.skills?.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {app.user.skills.slice(0, 6).map((sk) => (
+                            <span key={sk} className="rounded-full bg-white border border-gray-200 px-2 py-0.5 text-[10px] text-gray-600">{sk}</span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <CvEvalPanel application={app} />
+                    <InterviewFeedbackPanel application={app} />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
 
         {/* Empty state */}
         {!loading && paginated.length === 0 && (

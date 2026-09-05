@@ -648,17 +648,9 @@ export default function Interviews() {
                       <div className="flex items-center gap-2">
                         <HiOutlineClock className="w-4 h-4 text-gray-400" />
 
-                        <div>
-                          <p className="text-sm font-semibold text-gray-800">
-                            {dt.time || "Available now"}
-                          </p>
-
-                          {app.interviewDurationMinutes && (
-                            <p className="text-xs text-gray-400">
-                              ({app.interviewDurationMinutes} min)
-                            </p>
-                          )}
-                        </div>
+                        <p className="text-sm font-semibold text-gray-800">
+                          {dt.time || "Available now"}
+                        </p>
                       </div>
                     </div>
 

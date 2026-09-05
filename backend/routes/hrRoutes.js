@@ -359,7 +359,7 @@ router.get("/applicants", requireAuth, requireHR, async (req, res) => {
 
     const applications = await Application.find({ job: { $in: jobIds } })
       .populate("job", "title company city")
-      .populate("user", "name email phone location skills yearsOfExperience")
+      .populate("user", "name email phone location skills yearsOfExperience profilePicture")
       .sort({ createdAt: -1 });
 
     res.json(applications);
@@ -383,7 +383,7 @@ router.patch("/applicants/:id/status", requireAuth, requireHR, async (req, res) 
       req.params.id,
       update,
       { new: true }
-    ).populate("job").populate("user", "name email");
+    ).populate("job").populate("user", "name email profilePicture");
 
     res.json(app);
   } catch (err) {
@@ -430,6 +430,12 @@ router.get("/interviews/schedulable", requireAuth, requireHR, async (req, res) =
     const applications = await Application.find({
       job: { $in: jobIds },
       $or: [{ interviewDate: { $exists: false } }, { interviewDate: null }],
+      // Only candidates whose CV rating already qualifies them for an
+      // interview (> 50) should be schedulable — this keeps the HR
+      // dropdown and the candidate-side "> 50" unlock rule in sync,
+      // so a low-rated candidate can never end up with a scheduled
+      // interview they're not allowed to see/start.
+      cvRating: { $gt: 50 },
     })
       .populate("job", "title company")
       .populate("user", "name email")

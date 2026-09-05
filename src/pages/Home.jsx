@@ -6,9 +6,11 @@ import {
   HiOutlineMegaphone, HiOutlineChartBar, HiOutlineCube,
   HiOutlinePaintBrush, HiOutlineArrowRight, HiOutlineSquares2X2,
   HiOutlineUsers, HiOutlineCurrencyDollar, HiOutlineDocumentArrowUp,
-  HiOutlineStar, HiOutlineArrowUpTray, HiOutlineChatBubbleBottomCenterText,
+  HiStar, HiOutlineArrowUpTray, HiOutlineChatBubbleBottomCenterText,
   HiOutlineEnvelope, HiOutlineCheckCircle, HiOutlineArrowUp,
-  HiOutlineChevronLeft, HiOutlineChevronRight,
+  HiOutlineUserCircle, HiOutlineBuildingOffice2, HiOutlineDocumentText,
+  HiOutlineUserPlus, HiOutlinePaperAirplane, HiOutlineTrophy,
+  HiOutlineArrowTrendingUp, HiOutlineChevronLeft, HiOutlineChevronRight,
 } from "react-icons/hi2";
 import {
   FaFacebookF, FaTwitter, FaLinkedinIn, FaInstagram,
@@ -20,6 +22,10 @@ import { searchJobs, getTopCompanies } from "../services/jobService";
 import { getSavedJobs, saveJob, unsaveJob } from "../services/savedJobService";
 import { subscribeNewsletter } from "../services/newsletterService";
 import { useAuth } from "../context/AuthContext";
+
+const HERO_IMAGE = "https://images.unsplash.com/photo-1758876020200-1e19cddaf656?q=80&w=1200&auto=format&fit=crop";
+const JOB_SEEKER_IMAGE = "https://images.unsplash.com/photo-1698047681465-a75bcf38379e?q=80&w=800&auto=format&fit=crop";
+const EMPLOYER_IMAGE = "https://images.unsplash.com/photo-1698047682091-782b1e5c6536?q=80&w=800&auto=format&fit=crop";
 
 const CATEGORIES = [
   { label: "Software Development", short: "Software Development", count: "250+", icon: HiOutlineComputerDesktop, color: "bg-blue-50 text-blue-600" },
@@ -40,18 +46,32 @@ const POPULAR_SEARCHES = [
   "Data Analyst", "Product Manager", "Digital Marketing",
 ];
 
+const STATS = [
+  { label: "Job Seekers",  value: "20K+",  icon: HiOutlineUsers },
+  { label: "Companies",    value: "1.5K+", icon: HiOutlineBuildingOffice2 },
+  { label: "Applications", value: "50K+",  icon: HiOutlineDocumentText },
+  { label: "Jobs Posted",  value: "500+",  icon: HiOutlineBriefcase },
+];
+
+const HOW_IT_WORKS = [
+  { step: "01", title: "Create Profile",      desc: "Sign up and build a profile that highlights your skills.", icon: HiOutlineUserPlus },
+  { step: "02", title: "Find Opportunities",  desc: "Explore jobs that match your skills and interests.",       icon: HiOutlineMagnifyingGlass },
+  { step: "03", title: "Apply Easily",        desc: "Apply to jobs with a single click and get noticed.",       icon: HiOutlinePaperAirplane },
+  { step: "04", title: "Get Hired",           desc: "Connect with employers and start your journey.",           icon: HiOutlineTrophy },
+];
+
 const RESOURCES = [
-  { tag: "Career Tips", tagColor: "text-blue-600", gradient: "from-blue-500 to-indigo-600", icon: HiOutlineChatBubbleBottomCenterText, title: "10 Tips to Ace Your Next Job Interview", readTime: "5 min read" },
-  { tag: "Job Search", tagColor: "text-green-600", gradient: "from-emerald-500 to-teal-600", icon: HiOutlineDocumentArrowUp, title: "How to Write a CV That Gets You Hired", readTime: "7 min read" },
-  { tag: "Career Growth", tagColor: "text-purple-600", gradient: "from-purple-500 to-fuchsia-600", icon: HiOutlineChartBar, title: "Top Skills Employers Are Looking for This Year", readTime: "6 min read" },
-  { tag: "Workplace", tagColor: "text-amber-600", gradient: "from-amber-500 to-orange-600", icon: HiOutlineBriefcase, title: "How to Build a Successful Remote Career", readTime: "6 min read" },
+  { tag: "Career Tips",   gradient: "from-blue-500 to-indigo-600",     icon: HiOutlineChatBubbleBottomCenterText, title: "10 Tips to Ace Your Next Job Interview",              readTime: "5 min read" },
+  { tag: "Job Search",    gradient: "from-emerald-500 to-teal-600",    icon: HiOutlineDocumentArrowUp,             title: "How to Write a CV That Gets You Hired",                readTime: "7 min read" },
+  { tag: "Career Growth", gradient: "from-purple-500 to-fuchsia-600",  icon: HiOutlineChartBar,                    title: "Top Skills Employers Are Looking for This Year",       readTime: "6 min read" },
+  { tag: "Workplace",     gradient: "from-amber-500 to-orange-600",    icon: HiOutlineBriefcase,                   title: "How to Build a Successful Remote Career",              readTime: "6 min read" },
 ];
 
 const TESTIMONIALS = [
-  { name: "Ayesha Khan", role: "Frontend Developer at Teckdev", quote: "Tekky Job helped me find the perfect job within a week. The platform is easy to use and very effective!" },
-  { name: "Bilal Ahmed", role: "Backend Engineer at GCS", quote: "I got more interviews through Tekky Job than any other job portal. Highly recommended!" },
-  { name: "Sara Malik", role: "UI/UX Designer at InnovateX", quote: "The job recommendations are spot on! It saved me so much time in my search." },
-  { name: "Omar Farooq", role: "Data Analyst at Soft Solutions", quote: "Clean interface, real jobs, and a straightforward application process. Exactly what I needed." },
+  { name: "Ayesha Khan", role: "Frontend Developer at Teckdev",     quote: "Tekky Job helped me find the perfect job within a week. The platform is easy to use and very effective!" },
+  { name: "Bilal Ahmed", role: "Backend Engineer at GCS",           quote: "I got more interviews through Tekky Job than any other job portal. Highly recommended!" },
+  { name: "Sara Malik",  role: "UI/UX Designer at InnovateX",       quote: "The job recommendations are spot on! It saved me so much time in my search." },
+  { name: "Omar Farooq", role: "Data Analyst at Soft Solutions",    quote: "Clean interface, real jobs, and a straightforward application process. Exactly what I needed." },
 ];
 
 const AVATAR_COLORS = [
@@ -88,7 +108,7 @@ function formatSalary(salary = "") {
 }
 
 export default function Home() {
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, user } = useAuth();
   const navigate = useNavigate();
 
   const [title, setTitle]   = useState("");
@@ -100,6 +120,8 @@ export default function Home() {
   const [companies, setCompanies] = useState([]);
 
   const [testimonialStart, setTestimonialStart] = useState(0);
+  const [jobSlide, setJobSlide] = useState(0);
+  const JOBS_PER_SLIDE = 4;
 
   const [email, setEmail] = useState("");
   const [subStatus, setSubStatus] = useState(""); // "", "loading", "done", "error"
@@ -150,6 +172,16 @@ export default function Home() {
     navigate("/dashboard/resume");
   }
 
+  function handleFindJobs() {
+    navigate("/find-jobs");
+  }
+
+  function handleImHiring() {
+    if (isLoggedIn && user?.role === "hr") { navigate("/hr/post-job"); return; }
+    if (isLoggedIn && user?.role === "admin") { navigate("/admin/dashboard"); return; }
+    navigate("/register");
+  }
+
   async function handleSubscribe(e) {
     e.preventDefault();
     if (!email.trim()) return;
@@ -175,6 +207,18 @@ export default function Home() {
     return list;
   }, [testimonialStart]);
 
+  const jobSlideCount = Math.max(1, Math.ceil(jobs.length / JOBS_PER_SLIDE));
+  const visibleJobs = jobs.slice(jobSlide * JOBS_PER_SLIDE, jobSlide * JOBS_PER_SLIDE + JOBS_PER_SLIDE);
+
+  useEffect(() => { setJobSlide(0); }, [jobs]);
+
+  function nextJobSlide() {
+    setJobSlide((s) => (s + 1) % jobSlideCount);
+  }
+  function prevJobSlide() {
+    setJobSlide((s) => (s - 1 + jobSlideCount) % jobSlideCount);
+  }
+
   function scrollToTop() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -184,107 +228,208 @@ export default function Home() {
       <Navbar />
 
       {/* ── Hero ── */}
-      <section className="bg-gray-50 px-6 pt-16 pb-10 relative">
-        <div className="mx-auto max-w-6xl grid grid-cols-1 lg:grid-cols-2 items-center gap-12">
+      <section className="bg-gray-50 px-6 pt-14 pb-12 relative">
+        <div className="mx-auto max-w-7xl w-full grid grid-cols-1 lg:grid-cols-2 items-center gap-12">
 
           <div>
-            <h1 className="text-4xl sm:text-5xl font-bold text-gray-900 leading-tight">
-              Your Next Career<br />Starts <span className="text-blue-600">Here</span>
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 leading-tight">
+              The Right Job<br />Can Change <span className="text-blue-600">Everything.</span>
             </h1>
             <p className="mt-4 text-gray-500 text-base sm:text-lg max-w-md">
-              Find opportunities, build your future and grow your career with top employers.
+              Explore thousands of opportunities, connect with leading companies and build the career you deserve.
             </p>
 
             <div className="mt-7 flex flex-wrap items-center gap-3">
               <button
-                onClick={() => navigate("/find-jobs")}
-                className="rounded-xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white hover:bg-blue-700 transition"
+                onClick={handleFindJobs}
+                className="flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white hover:bg-blue-700 transition"
               >
-                Find Jobs
+                Find a Job <HiOutlineArrowRight className="h-4 w-4" />
+              </button>
+              <button
+                onClick={handleImHiring}
+                className="rounded-xl border border-gray-300 px-6 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-100 transition"
+              >
+                I'm Hiring
               </button>
               <button
                 onClick={handleUploadCV}
-                className="flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-100 transition"
+                className="flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-gray-500 hover:bg-gray-100 transition"
               >
                 <HiOutlineArrowUpTray className="h-4 w-4" />
                 Upload CV
               </button>
             </div>
+
+            <div className="mt-6 flex flex-wrap items-center gap-2 text-sm">
+              <span className="text-gray-400">Trending Searches:</span>
+              {POPULAR_SEARCHES.slice(0, 4).map((s) => (
+                <button
+                  key={s}
+                  onClick={() => navigate(`/find-jobs?title=${encodeURIComponent(s)}`)}
+                  className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition"
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
           </div>
 
-          {/* Decorative illustration */}
-          <div className="relative hidden lg:flex items-center justify-center h-72 overflow-hidden">
-            <div className="absolute h-56 w-40 rounded-2xl bg-white shadow-lg border border-gray-100 -rotate-6" />
-            <div className="absolute h-40 w-56 rounded-2xl bg-blue-900 shadow-xl flex items-center justify-center">
-              <HiOutlineBriefcase className="h-16 w-16 text-white/90" />
+          {/* Hero photo */}
+          <div className="relative hidden lg:flex items-center justify-center h-72">
+            <div className="absolute h-72 w-72 rounded-full bg-blue-100/60" />
+            <div className="absolute h-56 w-56 rounded-full bg-blue-50 -right-4 top-4" />
+
+            <div className="relative h-72 w-80 overflow-hidden rounded-3xl shadow-2xl">
+              <img
+                src={HERO_IMAGE}
+                alt="Professional working on a laptop"
+                className="h-full w-full object-cover"
+                loading="eager"
+              />
             </div>
-            <div className="absolute -top-2 right-10 flex h-12 w-12 items-center justify-center rounded-full bg-green-100 shadow-md">
-              <HiOutlineChartBar className="h-6 w-6 text-green-600" />
+
+            <div className="absolute -top-2 left-0 flex items-center gap-2 rounded-2xl bg-white px-4 py-3 shadow-lg">
+              <HiOutlineBriefcase className="h-5 w-5 text-blue-600 shrink-0" />
+              <div>
+                <p className="text-[11px] text-gray-400 leading-none">Job Matches For You</p>
+                <p className="text-sm font-bold text-gray-900 mt-1">28 New Jobs</p>
+              </div>
             </div>
-            <div className="absolute bottom-2 right-0 flex h-11 w-11 items-center justify-center rounded-2xl bg-orange-100 shadow-md rotate-12">
-              <HiOutlineChatBubbleBottomCenterText className="h-5 w-5 text-orange-500" />
+
+            <div className="absolute top-10 -right-4 flex items-center gap-2 rounded-2xl bg-white px-4 py-3 shadow-lg">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-100 shrink-0">
+                <HiOutlineChartBar className="h-4 w-4 text-green-600" />
+              </div>
+              <div>
+                <p className="text-[11px] text-gray-400 leading-none">Your Profile Strength</p>
+                <p className="text-sm font-bold text-gray-900 mt-1">85%</p>
+              </div>
             </div>
-            <div className="absolute top-6 left-4 h-3 w-3 rounded-full bg-blue-300" />
-            <div className="absolute bottom-10 left-0 h-2.5 w-2.5 rounded-full bg-amber-300" />
+
+            <div className="absolute -bottom-4 right-2 flex items-center gap-2 rounded-2xl bg-white px-4 py-3 shadow-lg">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 shrink-0">
+                <HiOutlineArrowTrendingUp className="h-4 w-4 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-[11px] text-gray-400 leading-none">Applications This Week</p>
+                <p className="text-sm font-bold text-gray-900 mt-1">14</p>
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Search bar */}
-        <div className="mx-auto max-w-5xl mt-10 relative">
+        <div className="mx-auto max-w-6xl w-full mt-12 relative">
           <form onSubmit={handleSearch}
-            className="flex flex-col md:flex-row items-stretch gap-2 rounded-2xl bg-white p-2 shadow-xl border border-gray-100">
-            <div className="flex flex-1 items-center gap-2 px-4 py-2.5">
+            className="flex flex-col md:flex-row items-stretch gap-2 rounded-2xl bg-[#0b1740] p-2.5 shadow-xl">
+            <div className="flex flex-1 items-center gap-2 rounded-xl bg-white px-4 py-2.5">
               <HiOutlineMagnifyingGlass className="h-5 w-5 shrink-0 text-gray-400" />
               <input
                 type="text" value={title} onChange={(e) => setTitle(e.target.value)}
-                placeholder="Job title, keywords or company"
+                placeholder="Job title, keyword or company"
                 className="flex-1 min-w-0 bg-transparent text-sm text-gray-800 placeholder-gray-400 outline-none"
               />
             </div>
 
-            <div className="hidden md:block w-px bg-gray-200 my-2" />
+            <div className="flex flex-1 items-center rounded-xl bg-white">
+              <CityAutocomplete value={city} onChange={setCity} />
+            </div>
 
             <Dropdown
               value={category}
               onChange={setCategory}
               options={CATEGORY_OPTIONS}
               fullWidth
-              className="md:w-56 my-1"
+              className="md:w-56"
+              buttonClassName="border-transparent"
             />
-
-            <div className="hidden md:block w-px bg-gray-200 my-2" />
-
-            <CityAutocomplete value={city} onChange={setCity} />
 
             <button type="submit"
               className="rounded-xl bg-blue-600 px-8 py-3 text-sm font-semibold text-white hover:bg-blue-700 transition whitespace-nowrap">
               Search Jobs
             </button>
           </form>
-
-          <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
-            <span className="text-gray-400">Popular Searches:</span>
-            {POPULAR_SEARCHES.map((s) => (
-              <button
-                key={s}
-                onClick={() => navigate(`/find-jobs?title=${encodeURIComponent(s)}`)}
-                className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition"
-              >
-                {s}
-              </button>
-            ))}
-          </div>
         </div>
       </section>
 
-      <div className="mx-auto max-w-6xl px-4 sm:px-6">
+      {/* ── Choose the Path ── */}
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 pt-16">
+        <div className="text-center mb-6">
+          <h2 className="text-2xl font-bold text-gray-900">Choose the Path</h2>
+          <p className="text-gray-500 text-sm mt-1">Choose an option and we'll personalize your experience.</p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <div className="rounded-3xl bg-blue-50 overflow-hidden flex flex-col lg:flex-row items-center">
+            <div className="h-72 w-full lg:w-80 shrink-0 overflow-hidden">
+              <img src={JOB_SEEKER_IMAGE} alt="Job seeker working on a laptop" className="h-full w-full object-cover" loading="lazy" />
+            </div>
+            <div className="text-center sm:text-left p-8">
+              <div className="flex justify-center sm:justify-start mb-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-600 text-white">
+                  <HiOutlineUserCircle className="h-6 w-6" />
+                </div>
+              </div>
+              <h3 className="text-lg font-bold text-gray-900">I'm Looking for a Job</h3>
+              <p className="text-sm text-gray-500 mt-1 mb-4">Find jobs that match your skills and kickstart your career.</p>
+              <button
+                onClick={handleFindJobs}
+                className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 transition"
+              >
+                Find Jobs <HiOutlineArrowRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+
+          <div className="rounded-3xl bg-emerald-50 overflow-hidden flex flex-col lg:flex-row items-center">
+            <div className="h-72 w-full lg:w-80 shrink-0 overflow-hidden">
+              <img src={EMPLOYER_IMAGE} alt="Employer hiring a candidate" className="h-full w-full object-cover" loading="lazy" />
+            </div>
+            <div className="text-center sm:text-left p-8">
+              <div className="flex justify-center sm:justify-start mb-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-600 text-white">
+                  <HiOutlineBuildingOffice2 className="h-6 w-6" />
+                </div>
+              </div>
+              <h3 className="text-lg font-bold text-gray-900">I'm Looking to Hire</h3>
+              <p className="text-sm text-gray-500 mt-1 mb-4">Post jobs, find candidates and build your dream team.</p>
+              <button
+                onClick={handleImHiring}
+                className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 transition"
+              >
+                Hire Talent <HiOutlineArrowRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Stats ── */}
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 pt-14">
+        <div className="rounded-3xl bg-blue-600 px-6 py-8 grid grid-cols-2 sm:grid-cols-4 gap-6">
+          {STATS.map((s) => (
+            <div key={s.label} className="flex items-center justify-center gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/15 text-white">
+                <s.icon className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-lg sm:text-xl font-bold text-white leading-none">{s.value}</p>
+                <p className="text-xs text-blue-100 mt-1">{s.label}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="mx-auto max-w-7xl px-4 sm:px-6">
 
         {/* ── Top Categories ── */}
-        <div className="pt-12 pb-2">
+        <div className="pt-16">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold text-gray-900">Top Categories</h2>
             <button
-              onClick={() => navigate("/find-jobs")}
+              onClick={handleFindJobs}
               className="flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700"
             >
               View All Categories <HiOutlineArrowRight className="h-4 w-4" />
@@ -306,7 +451,7 @@ export default function Home() {
               </button>
             ))}
             <button
-              onClick={() => navigate("/find-jobs")}
+              onClick={handleFindJobs}
               className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white px-3 py-5 shadow-sm hover:bg-gray-50 transition text-center"
             >
               <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gray-100 text-gray-500">
@@ -317,14 +462,32 @@ export default function Home() {
           </div>
         </div>
 
-        {/* ── Featured Jobs ── */}
-        <div className="pt-12">
+        {/* ── Featured Jobs (4-card slider) ── */}
+        <div className="pt-16">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-gray-900">Featured Jobs</h2>
-            <button onClick={() => navigate("/find-jobs")}
-              className="flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700">
-              View All Jobs <HiOutlineArrowRight className="h-4 w-4" />
-            </button>
+            <h2 className="text-xl font-bold text-gray-900">Featured Job Opportunities</h2>
+            <div className="flex items-center gap-3">
+              {jobSlideCount > 1 && (
+                <div className="hidden sm:flex items-center gap-2">
+                  <button
+                    onClick={prevJobSlide}
+                    className="flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 text-gray-500 hover:bg-gray-50 transition"
+                  >
+                    <HiOutlineChevronLeft className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={nextJobSlide}
+                    className="flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 text-gray-500 hover:bg-gray-50 transition"
+                  >
+                    <HiOutlineChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+              <button onClick={handleFindJobs}
+                className="flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700">
+                View All Jobs <HiOutlineArrowRight className="h-4 w-4" />
+              </button>
+            </div>
           </div>
 
           {loading && (
@@ -340,65 +503,86 @@ export default function Home() {
             </div>
           )}
 
-          <div className="rounded-2xl border border-gray-100 bg-white shadow-sm divide-y divide-gray-100 overflow-hidden">
-            {jobs.slice(0, 5).map((job) => {
-              const isSaved = savedIds.includes(job._id);
-              const color   = avatarColor(job.company || "");
-              const initial = (job.company || "C")[0].toUpperCase();
+          {!loading && jobs.length > 0 && (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {visibleJobs.map((job) => {
+                  const isSaved = savedIds.includes(job._id);
+                  const color   = avatarColor(job.company || "");
+                  const initial = (job.company || "C")[0].toUpperCase();
 
-              return (
-                <div
-                  key={job._id}
-                  onClick={() => navigate(`/jobs/${job._id}`)}
-                  className="flex flex-col sm:flex-row sm:items-center gap-4 px-6 py-5 hover:bg-gray-50 transition cursor-pointer"
-                >
-                  <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-base font-bold text-white ${color}`}>
-                    {initial}
-                  </div>
+                  return (
+                    <div
+                      key={job._id}
+                      onClick={() => navigate(`/jobs/${job._id}`)}
+                      className="flex flex-col rounded-2xl border border-gray-100 bg-white p-5 shadow-sm hover:shadow-md hover:border-blue-200 transition cursor-pointer"
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white ${color}`}>
+                          {initial}
+                        </div>
+                        <button
+                          onClick={(e) => handleToggleSave(e, job._id)}
+                          className="shrink-0 text-gray-300 hover:text-blue-600 transition"
+                        >
+                          {isSaved
+                            ? <HiBookmark className="h-5 w-5 text-blue-600" />
+                            : <HiOutlineBookmark className="h-5 w-5" />}
+                        </button>
+                      </div>
 
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-gray-900 truncate">{job.title}</p>
-                    <p className="text-xs text-gray-400 truncate">{job.company}</p>
-                  </div>
+                      <p className="text-sm font-bold text-gray-900 leading-snug">{job.title}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{job.company}</p>
 
-                  {job.city && (
-                    <span className="flex items-center gap-1 text-xs text-gray-400 shrink-0 sm:w-36">
-                      <HiOutlineMapPin className="h-3.5 w-3.5 shrink-0" />{formatCity(job.city)}
-                    </span>
-                  )}
+                      {job.city && (
+                        <span className="flex items-center gap-1 text-xs text-gray-400 mt-2">
+                          <HiOutlineMapPin className="h-3.5 w-3.5" />{formatCity(job.city)}
+                        </span>
+                      )}
 
-                  {job.salary && (
-                    <span className="text-sm font-bold text-gray-800 shrink-0 sm:w-44">{formatSalary(job.salary)}</span>
-                  )}
+                      {job.salary && (
+                        <p className="text-sm font-bold text-gray-800 mt-2">{formatSalary(job.salary)}</p>
+                      )}
 
-                  {job.type && (
-                    <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700 shrink-0 w-fit">
-                      {job.type}
-                    </span>
-                  )}
+                      <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-50">
+                        {job.type ? (
+                          <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-[11px] font-semibold text-blue-700 w-fit">
+                            {job.type}
+                          </span>
+                        ) : <span />}
+                        <span className="text-[11px] text-gray-300">{timeAgo(job.createdAt)}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
 
-                  <span className="text-xs text-gray-300 shrink-0 sm:w-20 text-right">{timeAgo(job.createdAt)}</span>
-
+              {jobSlideCount > 1 && (
+                <div className="flex items-center justify-center gap-4 mt-6">
                   <button
-                    onClick={(e) => handleToggleSave(e, job._id)}
-                    className="shrink-0 text-gray-400 hover:text-blue-600 transition"
+                    onClick={prevJobSlide}
+                    className="sm:hidden flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 text-gray-500 hover:bg-gray-50 transition"
                   >
-                    {isSaved
-                      ? <HiBookmark className="h-5 w-5 text-blue-600" />
-                      : <HiOutlineBookmark className="h-5 w-5" />}
+                    <HiOutlineChevronLeft className="h-4 w-4" />
+                  </button>
+                  <div className="flex items-center gap-2">
+                    {Array.from({ length: jobSlideCount }).map((_, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setJobSlide(i)}
+                        className={`h-2 rounded-full transition-all ${i === jobSlide ? "w-6 bg-blue-600" : "w-2 bg-gray-300"}`}
+                      />
+                    ))}
+                  </div>
+                  <button
+                    onClick={nextJobSlide}
+                    className="sm:hidden flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 text-gray-500 hover:bg-gray-50 transition"
+                  >
+                    <HiOutlineChevronRight className="h-4 w-4" />
                   </button>
                 </div>
-              );
-            })}
-          </div>
-
-          {!loading && jobs.length > 0 && (
-            <div className="text-center mt-4">
-              <button onClick={() => navigate("/find-jobs")}
-                className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700">
-                View All Jobs <HiOutlineArrowRight className="h-4 w-4" />
-              </button>
-            </div>
+              )}
+            </>
           )}
         </div>
 
@@ -406,7 +590,7 @@ export default function Home() {
         <div id="top-companies" className="pt-16 scroll-mt-20">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold text-gray-900">Top Companies Hiring</h2>
-            <button onClick={() => navigate("/find-jobs")}
+            <button onClick={handleFindJobs}
               className="flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700">
               View All Companies <HiOutlineArrowRight className="h-4 w-4" />
             </button>
@@ -440,6 +624,29 @@ export default function Home() {
           )}
         </div>
 
+        {/* ── How Tekky Job Works ── */}
+        <div className="pt-16">
+          <h2 className="text-xl font-bold text-gray-900 text-center mb-10">How Tekky Job Works?</h2>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 relative">
+            {HOW_IT_WORKS.map((step, i) => (
+              <div key={step.step} className="relative flex flex-col items-center text-center">
+                {i < HOW_IT_WORKS.length - 1 && (
+                  <div className="hidden lg:block absolute top-8 left-1/2 w-full border-t-2 border-dashed border-blue-100" />
+                )}
+                <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-blue-50 text-blue-600 mb-4">
+                  <step.icon className="h-7 w-7" />
+                  <span className="absolute -top-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-[10px] font-bold text-white">
+                    {step.step}
+                  </span>
+                </div>
+                <p className="text-sm font-bold text-gray-900">{step.title}</p>
+                <p className="text-xs text-gray-500 mt-1.5 max-w-[180px]">{step.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
         {/* ── Career Resources ── */}
         <div id="career-resources" className="pt-16 scroll-mt-20">
           <div className="flex items-center justify-between mb-4">
@@ -452,12 +659,14 @@ export default function Home() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {RESOURCES.map((r) => (
               <div key={r.title} className="rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden hover:shadow-md transition cursor-pointer">
-                <div className={`h-32 bg-gradient-to-br ${r.gradient} flex items-center justify-center`}>
+                <div className={`relative h-32 bg-gradient-to-br ${r.gradient} flex items-center justify-center`}>
                   <r.icon className="h-10 w-10 text-white/90" />
+                  <span className="absolute top-3 left-3 rounded-full bg-white/90 px-2.5 py-0.5 text-[10px] font-semibold text-gray-800">
+                    {r.tag}
+                  </span>
                 </div>
                 <div className="p-4">
-                  <p className={`text-xs font-semibold ${r.tagColor}`}>{r.tag}</p>
-                  <p className="mt-1 text-sm font-bold text-gray-900 leading-snug">{r.title}</p>
+                  <p className="text-sm font-bold text-gray-900 leading-snug">{r.title}</p>
                   <p className="mt-2 text-xs text-gray-400">{r.readTime}</p>
                 </div>
               </div>
@@ -467,7 +676,7 @@ export default function Home() {
 
         {/* ── Testimonials ── */}
         <div className="pt-16 pb-16">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">What Our Users Say</h2>
+          <h2 className="text-xl font-bold text-gray-900 text-center mb-8">What Our Users Say</h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
             {visibleTestimonials.map((t) => (
@@ -481,6 +690,9 @@ export default function Home() {
                   <div>
                     <p className="text-sm font-semibold text-gray-900">{t.name}</p>
                     <p className="text-xs text-gray-400">{t.role}</p>
+                  </div>
+                  <div className="flex items-center gap-0.5 ml-auto text-amber-400">
+                    {Array.from({ length: 5 }).map((_, i) => <HiStar key={i} className="h-3.5 w-3.5" />)}
                   </div>
                 </div>
               </div>
@@ -539,7 +751,7 @@ export default function Home() {
 
       {/* ── Footer ── */}
       <footer className="bg-[#0b1526] text-gray-300 px-6 pt-12 pb-6">
-        <div className="mx-auto max-w-6xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8">
+        <div className="mx-auto max-w-7xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8">
 
           <div>
             <div className="flex items-center gap-2 mb-3">
@@ -561,8 +773,8 @@ export default function Home() {
           <div>
             <p className="text-white font-semibold mb-3">For Job Seekers</p>
             <ul className="space-y-2 text-sm">
-              <li><button onClick={() => navigate("/find-jobs")} className="hover:text-white transition">Browse Jobs</button></li>
-              <li><button onClick={() => navigate("/find-jobs")} className="hover:text-white transition">Advanced Search</button></li>
+              <li><button onClick={handleFindJobs} className="hover:text-white transition">Browse Jobs</button></li>
+              <li><button onClick={handleFindJobs} className="hover:text-white transition">Advanced Search</button></li>
               <li><button onClick={() => document.getElementById("career-resources")?.scrollIntoView({ behavior: "smooth" })} className="hover:text-white transition">Career Advice</button></li>
               <li><button onClick={() => navigate(isLoggedIn ? "/dashboard" : "/register")} className="hover:text-white transition">Create Profile</button></li>
               <li><button onClick={() => navigate(isLoggedIn ? "/dashboard/settings" : "/register")} className="hover:text-white transition">Job Alerts</button></li>
@@ -572,7 +784,7 @@ export default function Home() {
           <div>
             <p className="text-white font-semibold mb-3">For Employers</p>
             <ul className="space-y-2 text-sm">
-              <li><button onClick={() => navigate("/login")} className="hover:text-white transition">Post a Job</button></li>
+              <li><button onClick={handleImHiring} className="hover:text-white transition">Post a Job</button></li>
               <li><button onClick={() => navigate("/login")} className="hover:text-white transition">Browse Candidates</button></li>
               <li><button onClick={() => alert("Pricing plans are coming soon.")} className="hover:text-white transition">Pricing Plans</button></li>
               <li><button onClick={() => navigate("/login")} className="hover:text-white transition">Employer Login</button></li>
@@ -606,7 +818,7 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="mx-auto max-w-6xl mt-10 pt-6 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500">
+        <div className="mx-auto max-w-7xl mt-10 pt-6 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500">
           <p>© {new Date().getFullYear()} Tekky Job. All rights reserved.</p>
           <div className="flex items-center gap-5">
             <a href="#" className="hover:text-white transition">Privacy Policy</a>
