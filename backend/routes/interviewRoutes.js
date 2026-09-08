@@ -5,32 +5,78 @@ import { requireAuth, requireAdmin } from "../middleware/auth.js";
 import {
   buildInterviewQueue,
   getInterviewTiming,
+  isLiveAvatarSandbox,
+  buildIntroText,
+  formatTurnsTranscript,
   DEFAULT_MAX_QUESTIONS,
+  SANDBOX_MAX_QUESTIONS,
 } from "../services/interviewQueue.js";
 import { summarizeInterview } from "../services/interviewSummarizer.js";
 import {
   getLiveAvatarTranscript,
-  formatTranscript,
 } from "../utils/liveavatar.js";
 
 const router = express.Router();
 
-async function createLiveAvatarSessionToken(applicationId) {
+export const CLOSING_REMARKS =
+  "Thank you for your time. I'll send my remarks to the HR team. If you are selected, they will contact you for the next stage.";
+
+/** Only avatar allowed in LiveAvatar sandbox (free, ~55s). */
+export const WAYNE_SANDBOX_AVATAR_ID =
+  "dd73ea75-1218-4ef3-92ce-606d5f7fbc0a";
+
+/**
+ * Sandbox → Wayne (or LIVEAVATAR_SANDBOX_AVATAR_ID).
+ * Production → LIVEAVATAR_AVATAR_ID (e.g. Silas). Skip Silas context_id in sandbox.
+ */
+async function createLiveAvatarSessionToken({
+  applicationId,
+  companyName,
+  jobTitle,
+}) {
   if (!process.env.LIVEAVATAR_API_KEY) {
     throw new Error("LIVEAVATAR_API_KEY is not configured on the server.");
   }
 
+  const sandbox = isLiveAvatarSandbox();
+  const avatarId = sandbox
+    ? process.env.LIVEAVATAR_SANDBOX_AVATAR_ID || WAYNE_SANDBOX_AVATAR_ID
+    : process.env.LIVEAVATAR_AVATAR_ID;
+
+  if (!avatarId) {
+    throw new Error(
+      sandbox
+        ? "Sandbox avatar id is not configured."
+        : "LIVEAVATAR_AVATAR_ID is not configured on the server."
+    );
+  }
+
   const body = {
     mode: "FULL",
-    avatar_id: process.env.LIVEAVATAR_AVATAR_ID,
-    is_sandbox: process.env.LIVEAVATAR_SANDBOX === "true",
+    avatar_id: avatarId,
+    is_sandbox: sandbox,
+    max_session_duration: sandbox ? 55 : 120,
+    dynamic_variables: {
+      company_name: String(companyName || "our company").slice(0, 1000),
+      job_title: String(jobTitle || "this role").slice(0, 1000),
+    },
   };
 
-  if (process.env.LIVEAVATAR_CONTEXT_ID) {
+  // FULL mode requires avatar_persona or voice_agent.
+  // Production: optional Silas context. Sandbox: language-only (app owns intro script).
+  if (!sandbox && process.env.LIVEAVATAR_CONTEXT_ID) {
     body.avatar_persona = {
       context_id: process.env.LIVEAVATAR_CONTEXT_ID,
     };
+  } else if (sandbox) {
+    body.avatar_persona = {
+      language: "en",
+    };
   }
+
+  console.log(
+    `LiveAvatar token request: is_sandbox=${sandbox} avatar_id=${avatarId}`
+  );
 
   const response = await fetch(
     "https://api.liveavatar.com/v1/sessions/token",
@@ -47,12 +93,19 @@ async function createLiveAvatarSessionToken(applicationId) {
   const data = await response.json();
 
   if (!response.ok) {
-    console.error("LiveAvatar token error:", data);
+    console.error(
+      `LiveAvatar token error (is_sandbox=${sandbox} avatar_id=${avatarId}):`,
+      data
+    );
     const err = new Error("Failed to create LiveAvatar session.");
     err.status = response.status;
     err.details = data;
     throw err;
   }
+
+  console.log(
+    `LiveAvatar token ok: is_sandbox=${sandbox} avatar_id=${avatarId}`
+  );
 
   return {
     sessionToken: data.data?.session_token,
@@ -62,6 +115,8 @@ async function createLiveAvatarSessionToken(applicationId) {
       data.session_id ||
       null,
     applicationId,
+    sandbox,
+    avatarId,
     raw: data.data || data,
   };
 }
@@ -79,7 +134,7 @@ router.post("/session", requireAuth, async (req, res) => {
       });
     }
 
-    const application = await Application.findById(applicationId);
+    const application = await Application.findById(applicationId).populate("job");
 
     if (!application) {
       return res.status(404).json({
@@ -91,7 +146,11 @@ router.post("/session", requireAuth, async (req, res) => {
       return res.status(403).json({ message: "Not authorized." });
     }
 
-    const tokenData = await createLiveAvatarSessionToken(applicationId);
+    const tokenData = await createLiveAvatarSessionToken({
+      applicationId,
+      companyName: application.job?.company,
+      jobTitle: application.job?.title,
+    });
 
     if (tokenData.sessionId) {
       application.liveAvatarSessionId = tokenData.sessionId;
@@ -157,27 +216,37 @@ router.post(
         return res.status(404).json({ message: "Job not found." });
       }
 
-      const { durationSeconds, answerSeconds } = getInterviewTiming(job);
+      const sandbox = isLiveAvatarSandbox();
+      const { durationSeconds, answerSeconds } = getInterviewTiming(job, {
+        sandbox,
+      });
+      const maxCap = sandbox ? SANDBOX_MAX_QUESTIONS : DEFAULT_MAX_QUESTIONS;
       const maxQuestions = Math.min(
-        DEFAULT_MAX_QUESTIONS,
+        maxCap,
         Math.max(1, Math.floor(durationSeconds / answerSeconds))
       );
 
-      // Always rebuild queue on start so latest HR questions are used
       const questions = await buildInterviewQueue({
         job,
         application,
         maxQuestions,
       });
       application.interviewQuestions = questions;
+      application.interviewTurns = [];
+
+      const companyName = job.company || "our company";
+      const jobTitle = job.title || "this role";
+      const introText = buildIntroText(companyName, jobTitle);
 
       let sessionToken = null;
-      let sessionId = application.liveAvatarSessionId || null;
+      let sessionId = null;
 
       try {
-        const tokenData = await createLiveAvatarSessionToken(
-          application._id.toString()
-        );
+        const tokenData = await createLiveAvatarSessionToken({
+          applicationId: application._id.toString(),
+          companyName,
+          jobTitle,
+        });
         sessionToken = tokenData.sessionToken;
         if (tokenData.sessionId) {
           sessionId = tokenData.sessionId;
@@ -199,9 +268,14 @@ router.post(
         applicationId: application._id,
         sessionToken,
         sessionId,
+        sandbox,
         questions: application.interviewQuestions,
         durationSeconds,
         answerSeconds,
+        companyName,
+        jobTitle,
+        introText,
+        closingRemarks: CLOSING_REMARKS,
         currentQuestionIndex: 0,
         job: {
           _id: job._id,
@@ -300,6 +374,7 @@ router.post(
           interviewSummary: application.interviewSummary,
           interviewRating: application.interviewRating,
           interviewTranscript: application.interviewTranscript,
+          interviewTurns: application.interviewTurns || [],
           alreadyCompleted: true,
         });
       }
@@ -310,21 +385,33 @@ router.post(
         application.liveAvatarSessionId = clientSessionId;
       }
 
-      let transcript = "";
-      let transcriptRaw = null;
+      // Structured turns from client are source of truth for HR Q&A
+      const clientTurns = Array.isArray(req.body?.turns)
+        ? req.body.turns
+            .filter((t) => t && t.question)
+            .map((t, i) => ({
+              order: Number.isFinite(Number(t.order)) ? Number(t.order) : i,
+              question: String(t.question).trim(),
+              source: ["intro", "hr", "cv", "general", "closing"].includes(
+                t.source
+              )
+                ? t.source
+                : "hr",
+              answer: t.answer != null ? String(t.answer).trim() : "",
+            }))
+        : [];
 
+      if (clientTurns.length) {
+        application.interviewTurns = clientTurns;
+      }
+
+      let transcriptRaw = null;
       if (application.liveAvatarSessionId) {
         try {
           const data = await getLiveAvatarTranscript(
             application.liveAvatarSessionId
           );
           transcriptRaw = data;
-          const lines = data?.transcript_data || data?.transcript || [];
-          if (Array.isArray(lines) && lines.length) {
-            transcript = formatTranscript(lines);
-          } else if (typeof data === "string") {
-            transcript = data;
-          }
         } catch (transcriptErr) {
           console.error(
             "Failed to fetch LiveAvatar transcript:",
@@ -333,25 +420,42 @@ router.post(
         }
       }
 
-      // Fallback: client-provided transcript (local Q&A log)
-      if (!transcript && req.body?.transcript) {
-        transcript = String(req.body.transcript);
+      // Clean primary transcript from turns (no local-log merge pollution)
+      let transcript = formatTurnsTranscript(application.interviewTurns || []);
+      if (!transcript.trim()) {
+        const clientTranscript = req.body?.transcript
+          ? String(req.body.transcript).trim()
+          : "";
+        transcript =
+          clientTranscript ||
+          "Interview completed. No detailed transcript was captured.";
       }
 
-      const questionTexts = (application.interviewQuestions || []).map(
-        (q) => q.text
-      );
+      const questionTexts = (application.interviewTurns || [])
+        .filter((t) => !["intro", "closing"].includes(t.source))
+        .map((t) => t.question);
 
       const summaryResult = await summarizeInterview({
         jobTitle: application.job?.title,
         jobDescription: application.job?.description,
         transcript,
-        questions: questionTexts,
+        questions: questionTexts.length
+          ? questionTexts
+          : (application.interviewQuestions || []).map((q) => q.text),
       });
 
-      application.interviewTranscript = transcript || "";
-      if (transcriptRaw) application.interviewTranscriptRaw = transcriptRaw;
-      application.interviewSummary = summaryResult.summary;
+      application.interviewTranscript = transcript;
+      if (transcriptRaw) {
+        application.interviewTranscriptRaw = {
+          liveAvatar: transcriptRaw,
+          ...(Array.isArray(req.body?.rawLog)
+            ? { clientLog: req.body.rawLog }
+            : {}),
+        };
+      }
+      application.interviewSummary =
+        summaryResult.summary ||
+        "Interview completed. Please review the transcript.";
       if (summaryResult.rating != null) {
         application.interviewRating = summaryResult.rating;
       }
@@ -371,6 +475,8 @@ router.post(
         interviewRating: application.interviewRating,
         interviewTechnicalRating: application.interviewTechnicalRating,
         interviewTranscript: application.interviewTranscript,
+        interviewTurns: application.interviewTurns,
+        closingRemarks: CLOSING_REMARKS,
         alreadyCompleted: false,
       });
     } catch (err) {

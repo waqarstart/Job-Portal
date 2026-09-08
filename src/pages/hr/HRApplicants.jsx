@@ -223,7 +223,11 @@ function CvEvalPanel({ application }) {
   if (cvEvaluationStatus === "failed") {
     return (
       <div className="mt-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3">
-        <p className="text-xs text-red-700">AI evaluation could not be completed for this CV.</p>
+        <p className="text-xs font-medium text-red-800">CV scoring failed</p>
+        <p className="mt-1 text-xs text-red-700">
+          AI evaluation could not be completed. Ask the candidate to re-apply, or
+          contact support if this keeps happening.
+        </p>
       </div>
     );
   }

@@ -6,31 +6,116 @@ import {
 } from "@heygen/liveavatar-web-sdk";
 
 /**
- * LiveAvatar video + speak control for the timed interview room.
- * Falls back to a placeholder UI when no sessionToken is available.
+ * LiveAvatar FULL-mode: interrupt context greeting, then speak scripted lines only.
  */
 export default function LiveAvatarInterview({
   sessionToken,
   active,
-  questionText,
-  questionIndex,
+  phase,
+  speakText,
+  speakKey,
   onAvatarStopSpeaking,
+  onIntroSpoken,
+  onClosingSpoken,
   onSessionId,
+  onDisconnected,
   onError,
   onLocalTranscriptLine,
+  onUserAnswerChunk,
 }) {
   const videoRef = useRef(null);
   const sessionRef = useRef(null);
   const fallbackTimerRef = useRef(null);
-  const lastSpokenIndexRef = useRef(-1);
+  const lastSpeakKeyRef = useRef(null);
+  const activeSpeakKeyRef = useRef(null);
+  const speakEndedFiredRef = useRef(false);
+  const interruptedOpeningRef = useRef(false);
+  const phaseRef = useRef(phase);
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState("");
 
-  // Start / stop session when token + active change
+  const onAvatarStopSpeakingRef = useRef(onAvatarStopSpeaking);
+  const onIntroSpokenRef = useRef(onIntroSpoken);
+  const onClosingSpokenRef = useRef(onClosingSpoken);
+  const onDisconnectedRef = useRef(onDisconnected);
+  const onErrorRef = useRef(onError);
+  const onLocalTranscriptLineRef = useRef(onLocalTranscriptLine);
+  const onUserAnswerChunkRef = useRef(onUserAnswerChunk);
+  const onSessionIdRef = useRef(onSessionId);
+
+  useEffect(() => {
+    phaseRef.current = phase;
+  }, [phase]);
+  useEffect(() => {
+    onAvatarStopSpeakingRef.current = onAvatarStopSpeaking;
+  }, [onAvatarStopSpeaking]);
+  useEffect(() => {
+    onIntroSpokenRef.current = onIntroSpoken;
+  }, [onIntroSpoken]);
+  useEffect(() => {
+    onClosingSpokenRef.current = onClosingSpoken;
+  }, [onClosingSpoken]);
+  useEffect(() => {
+    onDisconnectedRef.current = onDisconnected;
+  }, [onDisconnected]);
+  useEffect(() => {
+    onErrorRef.current = onError;
+  }, [onError]);
+  useEffect(() => {
+    onLocalTranscriptLineRef.current = onLocalTranscriptLine;
+  }, [onLocalTranscriptLine]);
+  useEffect(() => {
+    onUserAnswerChunkRef.current = onUserAnswerChunk;
+  }, [onUserAnswerChunk]);
+  useEffect(() => {
+    onSessionIdRef.current = onSessionId;
+  }, [onSessionId]);
+
+  const clearFallback = () => {
+    if (fallbackTimerRef.current) {
+      clearTimeout(fallbackTimerRef.current);
+      fallbackTimerRef.current = null;
+    }
+  };
+
+  const safeCall = (fn, ...args) => {
+    try {
+      const session = sessionRef.current;
+      if (!session || typeof session[fn] !== "function") return;
+      return session[fn](...args);
+    } catch (err) {
+      console.warn(`LiveAvatar ${fn} failed:`, err?.message || err);
+    }
+  };
+
+  const fireSpeakEnded = () => {
+    if (speakEndedFiredRef.current) return;
+    // Ignore stray events not tied to current speak key
+    if (
+      activeSpeakKeyRef.current &&
+      lastSpeakKeyRef.current &&
+      activeSpeakKeyRef.current !== lastSpeakKeyRef.current
+    ) {
+      return;
+    }
+    speakEndedFiredRef.current = true;
+    clearFallback();
+
+    const p = phaseRef.current;
+    if (p === "closing") {
+      onClosingSpokenRef.current?.();
+    } else if (p === "introSpeaking") {
+      onIntroSpokenRef.current?.();
+    } else {
+      onAvatarStopSpeakingRef.current?.(activeSpeakKeyRef.current);
+    }
+  };
+
   useEffect(() => {
     if (!active) return undefined;
 
     let cancelled = false;
+    interruptedOpeningRef.current = false;
 
     async function boot() {
       if (!sessionToken) {
@@ -40,6 +125,7 @@ export default function LiveAvatarInterview({
 
       try {
         setStatus("connecting");
+        setError("");
         const session = new LiveAvatarSession(sessionToken, {
           voiceChat: true,
         });
@@ -54,26 +140,49 @@ export default function LiveAvatarInterview({
               console.error("Failed to attach LiveAvatar stream:", err);
             }
           }
+          // Cut context auto-opening ("Silas from LiveAvatar...")
+          if (!interruptedOpeningRef.current) {
+            interruptedOpeningRef.current = true;
+            try {
+              session.interrupt();
+            } catch {
+              /* ignore */
+            }
+          }
           setStatus("ready");
+        });
+
+        session.on(SessionEvent.SESSION_DISCONNECTED, () => {
+          if (cancelled) return;
+          setStatus("fallback");
+          onDisconnectedRef.current?.("disconnected");
+        });
+
+        session.on(AgentEventsEnum.SESSION_STOPPED, () => {
+          if (cancelled) return;
+          setStatus("fallback");
+          onDisconnectedRef.current?.("stopped");
         });
 
         session.on(AgentEventsEnum.AVATAR_SPEAK_ENDED, () => {
           if (cancelled) return;
-          if (fallbackTimerRef.current) {
-            clearTimeout(fallbackTimerRef.current);
-            fallbackTimerRef.current = null;
-          }
-          onAvatarStopSpeaking?.();
+          // Ignore ending of interrupted context greeting before we spoke
+          if (!lastSpeakKeyRef.current) return;
+          fireSpeakEnded();
         });
 
         session.on(AgentEventsEnum.AVATAR_TRANSCRIPTION, (event) => {
           const text = event?.text;
-          if (text) onLocalTranscriptLine?.("AI", text);
+          if (text) onLocalTranscriptLineRef.current?.("AI", text);
         });
 
         session.on(AgentEventsEnum.USER_TRANSCRIPTION, (event) => {
           const text = event?.text;
-          if (text) onLocalTranscriptLine?.("Candidate", text);
+          if (!text) return;
+          onLocalTranscriptLineRef.current?.("Candidate", text);
+          if (phaseRef.current === "answering") {
+            onUserAnswerChunkRef.current?.(text);
+          }
         });
 
         await session.start();
@@ -83,14 +192,14 @@ export default function LiveAvatarInterview({
         }
 
         if (session.sessionId) {
-          onSessionId?.(session.sessionId);
+          onSessionIdRef.current?.(session.sessionId);
         }
       } catch (err) {
         console.error("LiveAvatar session error:", err);
         if (!cancelled) {
           setError(err.message || "Could not start LiveAvatar session.");
           setStatus("fallback");
-          onError?.(err);
+          onErrorRef.current?.(err);
         }
       }
     }
@@ -99,84 +208,72 @@ export default function LiveAvatarInterview({
 
     return () => {
       cancelled = true;
-      if (fallbackTimerRef.current) {
-        clearTimeout(fallbackTimerRef.current);
-        fallbackTimerRef.current = null;
-      }
+      clearFallback();
       const session = sessionRef.current;
       sessionRef.current = null;
       if (session) {
         session.stop().catch(() => {});
       }
     };
-    // intentionally only re-boot when token/active change
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, sessionToken]);
 
-  // Speak current question (or use fallback speech timer)
+  useEffect(() => {
+    if (!active || status !== "ready") return;
+    if (phase === "answering") {
+      safeCall("startListening");
+    } else {
+      safeCall("stopListening");
+    }
+  }, [active, status, phase]);
+
   useEffect(() => {
     if (!active) return;
-    if (!questionText) return;
-    if (lastSpokenIndexRef.current === questionIndex) return;
-
-    // Wait until connected (or fallback mode) before locking the spoken index
-    if (status !== "ready" && status !== "fallback") return;
-
-    lastSpokenIndexRef.current = questionIndex;
-
-    if (fallbackTimerRef.current) {
-      clearTimeout(fallbackTimerRef.current);
-      fallbackTimerRef.current = null;
+    if (!speakText) return;
+    if (
+      phase !== "avatarSpeaking" &&
+      phase !== "closing" &&
+      phase !== "introSpeaking"
+    ) {
+      return;
     }
+    if (status !== "ready" && status !== "fallback") return;
+    if (lastSpeakKeyRef.current === speakKey) return;
 
-    const session = sessionRef.current;
+    lastSpeakKeyRef.current = speakKey;
+    activeSpeakKeyRef.current = speakKey;
+    speakEndedFiredRef.current = false;
+    clearFallback();
+
     const estimatedMs = Math.min(
-      20000,
-      Math.max(2500, (questionText.length / 14) * 1000)
+      18000,
+      Math.max(2500, (speakText.length / 14) * 1000)
     );
 
     const speak = () => {
-      onLocalTranscriptLine?.("AI", questionText);
+      onLocalTranscriptLineRef.current?.("AI", speakText);
 
-      if (session && status === "ready") {
-        try {
-          if (typeof session.repeat === "function") {
-            session.repeat(questionText);
-          } else if (typeof session.message === "function") {
-            session.message(questionText);
-          }
-        } catch (err) {
-          console.error("Avatar speak failed, using fallback timer:", err);
-        }
+      if (status === "ready" && sessionRef.current) {
+        safeCall("interrupt");
+        safeCall("stopListening");
+        safeCall("repeat", speakText);
       }
 
       fallbackTimerRef.current = setTimeout(() => {
         fallbackTimerRef.current = null;
-        onAvatarStopSpeaking?.();
-      }, estimatedMs);
+        fireSpeakEnded();
+      }, status === "fallback" ? estimatedMs : estimatedMs + 1000);
     };
 
-    const kickoff = setTimeout(speak, 400);
-
+    // Small delay after interrupt so context greeting is cut before our line
+    const kickoff = setTimeout(speak, status === "ready" ? 500 : 200);
     return () => {
       clearTimeout(kickoff);
     };
-  }, [
-    active,
-    questionText,
-    questionIndex,
-    status,
-    onAvatarStopSpeaking,
-    onLocalTranscriptLine,
-  ]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, speakText, speakKey, phase, status]);
 
-  useEffect(() => {
-    return () => {
-      if (fallbackTimerRef.current) {
-        clearTimeout(fallbackTimerRef.current);
-      }
-    };
-  }, []);
+  useEffect(() => () => clearFallback(), []);
 
   if (!active) {
     return (
@@ -203,28 +300,38 @@ export default function LiveAvatarInterview({
         }`}
       />
 
+      {status === "ready" && phase === "answering" && (
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-emerald-600/90 px-4 py-1.5 text-xs font-semibold text-white shadow">
+          Listening…
+        </div>
+      )}
+
       {status !== "ready" && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900 text-white px-6 text-center">
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900 px-6 text-center text-white">
           <div className="mb-4 text-5xl">🤖</div>
           <p className="text-xl font-semibold">
             {status === "connecting"
               ? "Connecting to AI interviewer…"
               : "AI Interviewer"}
           </p>
-          <p className="mt-2 text-sm text-gray-400 max-w-md">
+          <p className="mt-2 max-w-md text-sm text-gray-400">
             {status === "fallback"
               ? "Video avatar unavailable. Continue answering using the on-screen questions and timers."
               : "Please allow microphone access when prompted."}
           </p>
           {error && (
-            <p className="mt-3 text-xs text-amber-300 max-w-md">{error}</p>
+            <p className="mt-3 max-w-md text-xs text-amber-300">{error}</p>
           )}
-          {questionText && (
+          {speakText && (
             <div className="mt-6 max-w-lg rounded-xl bg-white/10 p-4 text-left text-sm text-gray-100">
-              <p className="text-xs uppercase tracking-wide text-gray-400 mb-1">
-                Current question
+              <p className="mb-1 text-xs uppercase tracking-wide text-gray-400">
+                {phase === "closing"
+                  ? "Closing"
+                  : phase === "introSpeaking"
+                    ? "Introduction"
+                    : "Current question"}
               </p>
-              <p>{questionText}</p>
+              <p>{speakText}</p>
             </div>
           )}
         </div>

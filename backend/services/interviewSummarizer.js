@@ -1,7 +1,11 @@
-const OPENROUTER_URL =
-  "https://openrouter.ai/api/v1/chat/completions";
+import { parseLlmJson } from "../utils/parseLlmJson.js";
+
+const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 
 const MODEL = "openrouter/free";
+
+const SYSTEM_PROMPT =
+  "You are a precise interview reviewer. Reply with a single JSON object only. No markdown, no chain-of-thought, no explanations before or after the JSON.";
 
 /**
  * Summarize an interview transcript and produce a 1–10 rating.
@@ -46,7 +50,7 @@ ${String(transcript).slice(0, 8000)}
 
 Evaluate the candidate's communication, relevance, and technical depth.
 
-Return ONLY valid JSON:
+Return ONLY this JSON object (no other text):
 {
   "summary": "2-4 sentence summary for HR",
   "rating": 7,
@@ -54,54 +58,37 @@ Return ONLY valid JSON:
 }
 
 rating and technicalRating must be integers from 1 to 10 (or null if insufficient data).
-`;
+`.trim();
+
+  const messages = [
+    { role: "system", content: SYSTEM_PROMPT },
+    { role: "user", content: prompt },
+  ];
+
+  const clamp = (n) =>
+    typeof n === "number" && n >= 1 && n <= 10 ? Math.round(n) : null;
 
   try {
-    const response = await fetch(OPENROUTER_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer":
-          process.env.CLIENT_URL || "http://localhost:5173",
-        "X-Title": "Job Portal Interview Summarizer",
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are a precise interview reviewer. Return only valid JSON.",
-          },
-          { role: "user", content: prompt },
-        ],
-        temperature: 0.2,
-        max_tokens: 1000,
-      }),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      console.error("OpenRouter summarizer error:", JSON.stringify(data, null, 2));
-      throw new Error(data?.error?.message || "Summarizer request failed.");
-    }
-
-    const content = data?.choices?.[0]?.message?.content;
-    if (!content) throw new Error("Empty summarizer response.");
-
+    const content = await callOpenRouter(messages);
     let result;
     try {
-      result = JSON.parse(content);
-    } catch {
-      const match = content.match(/\{[\s\S]*\}/);
-      if (!match) throw new Error("Invalid summarizer JSON.");
-      result = JSON.parse(match[0]);
+      result = parseLlmJson(content);
+    } catch (firstErr) {
+      console.warn(
+        "Summarizer JSON parse failed, retrying once:",
+        firstErr.message
+      );
+      const retryContent = await callOpenRouter([
+        ...messages,
+        { role: "assistant", content: String(content).slice(0, 4000) },
+        {
+          role: "user",
+          content:
+            "Your previous reply was not valid JSON. Return ONLY the JSON object with keys summary, rating, technicalRating. No thinking, no markdown.",
+        },
+      ]);
+      result = parseLlmJson(retryContent);
     }
-
-    const clamp = (n) =>
-      typeof n === "number" && n >= 1 && n <= 10 ? Math.round(n) : null;
 
     return {
       summary: result.summary || "Interview completed.",
@@ -117,4 +104,37 @@ rating and technicalRating must be integers from 1 to 10 (or null if insufficien
       technicalRating: null,
     };
   }
+}
+
+async function callOpenRouter(messages) {
+  const response = await fetch(OPENROUTER_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer": process.env.CLIENT_URL || "http://localhost:5173",
+      "X-Title": "Job Portal Interview Summarizer",
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      messages,
+      temperature: 0.2,
+      max_tokens: 1000,
+      response_format: { type: "json_object" },
+    }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    console.error(
+      "OpenRouter summarizer error:",
+      JSON.stringify(data, null, 2)
+    );
+    throw new Error(data?.error?.message || "Summarizer request failed.");
+  }
+
+  const content = data?.choices?.[0]?.message?.content;
+  if (!content) throw new Error("Empty summarizer response.");
+  return content;
 }

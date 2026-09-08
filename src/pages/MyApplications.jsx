@@ -481,6 +481,9 @@ export default function MyApplications() {
             matchedSkills.length > 0 ||
             missingSkills.length > 0;
 
+          const evaluationFailed =
+            app.cvEvaluationStatus === "failed";
+
           const evaluationOpen =
             expandedEvaluationId === app._id;
 
@@ -547,6 +550,17 @@ export default function MyApplications() {
                     </div>
 
                     {/* CV RATING */}
+
+                    {evaluationFailed && (
+                      <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                        <p className="font-semibold">CV scoring failed</p>
+                        <p className="mt-0.5">
+                          Your application was submitted, but AI scoring did not
+                          complete. Please re-apply or contact support if this
+                          continues.
+                        </p>
+                      </div>
+                    )}
 
                     {Number.isFinite(cvRating) && (
                       <div className="flex flex-wrap items-center gap-2 mt-3">

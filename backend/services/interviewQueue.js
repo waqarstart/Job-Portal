@@ -1,8 +1,40 @@
 import { generateCvInterviewQuestions } from "./interviewQuestionGenerator.js";
 
 export const DEFAULT_MAX_QUESTIONS = 6;
+export const SANDBOX_MAX_QUESTIONS = 3;
 export const DEFAULT_DURATION_SECONDS = 120;
+export const SANDBOX_DURATION_SECONDS = 55;
 export const DEFAULT_ANSWER_SECONDS = 15;
+
+export function isLiveAvatarSandbox() {
+  return process.env.LIVEAVATAR_SANDBOX === "true";
+}
+
+export function buildIntroText(company, jobTitle) {
+  const companyName = String(company || "our company").trim() || "our company";
+  const title = String(jobTitle || "this role").trim() || "this role";
+  return `Hi, I'm your AI interviewer from ${companyName}. Today we'll talk about the ${title} role. Let's begin.`;
+}
+
+export function formatTurnsTranscript(turns = []) {
+  const scored = (turns || []).filter(
+    (t) => t && t.question && !["intro", "closing"].includes(t.source)
+  );
+
+  if (!scored.length) {
+    return "";
+  }
+
+  return scored
+    .map((t, i) => {
+      const answer =
+        t.answer && String(t.answer).trim()
+          ? String(t.answer).trim()
+          : "No answer recorded.";
+      return `Q${i + 1}. ${t.question}\nCandidate: ${answer}`;
+    })
+    .join("\n\n");
+}
 
 /**
  * Build ordered interview queue: HR questions first, then CV technical questions.
@@ -33,12 +65,14 @@ export async function buildInterviewQueue({
       });
       cvQuestions = generated.cvQuestions || [];
     } catch (err) {
-      console.error("CV question generation failed, continuing with HR questions:", err.message);
+      console.error(
+        "CV question generation failed, continuing with HR questions:",
+        err.message
+      );
       cvQuestions = [];
     }
   }
 
-  // Fallback general question if nothing else is available
   if (hrQuestions.length === 0 && cvQuestions.length === 0) {
     cvQuestions = [
       `Briefly describe a technical project relevant to the ${job?.title || "role"} and your role in it.`,
@@ -55,7 +89,6 @@ export async function buildInterviewQueue({
 
   for (const text of cvQuestions) {
     if (queue.length >= maxQuestions) break;
-    // Skip near-duplicates of HR questions
     const normalized = text.toLowerCase();
     if (queue.some((q) => q.text.toLowerCase() === normalized)) continue;
     queue.push({ text, source: "cv", order: order++ });
@@ -64,7 +97,14 @@ export async function buildInterviewQueue({
   return queue.slice(0, maxQuestions);
 }
 
-export function getInterviewTiming(job) {
+export function getInterviewTiming(job, { sandbox = false } = {}) {
+  if (sandbox) {
+    return {
+      durationSeconds: SANDBOX_DURATION_SECONDS,
+      answerSeconds: DEFAULT_ANSWER_SECONDS,
+    };
+  }
+
   const durationSeconds =
     Number.isFinite(Number(job?.interviewDurationSeconds)) &&
     Number(job.interviewDurationSeconds) > 0

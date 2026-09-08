@@ -57,6 +57,19 @@ const applicationSchema = new mongoose.Schema(
     interviewTechnicalRating: Number,
     interviewTranscript: String,
     interviewTranscriptRaw: mongoose.Schema.Types.Mixed,
+    // Structured Q&A for HR display
+    interviewTurns: [
+      {
+        order: { type: Number, default: 0 },
+        question: { type: String, required: true },
+        source: {
+          type: String,
+          enum: ["intro", "hr", "cv", "general", "closing"],
+          default: "hr",
+        },
+        answer: { type: String, default: "" },
+      },
+    ],
     interviewStartedAt: Date,
     interviewCompletedAt: Date,
 

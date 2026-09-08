@@ -20,9 +20,6 @@ function interviewStatusLabel(status) {
   return String(status).replace(/_/g, " ");
 }
 
-/**
- * Compact badge for table rows.
- */
 export function InterviewStatusBadge({ status, className = "", short = false }) {
   const style =
     INTERVIEW_STATUS_STYLES[status] ||
@@ -37,8 +34,18 @@ export function InterviewStatusBadge({ status, className = "", short = false }) 
   );
 }
 
+function scoredTurns(turns = []) {
+  return (turns || []).filter(
+    (t) => t?.question && !["intro", "closing"].includes(t.source)
+  );
+}
+
+function closingTurn(turns = []) {
+  return (turns || []).find((t) => t?.source === "closing");
+}
+
 /**
- * Expanded HR panel: summary, rating, transcript, audio.
+ * Expanded HR panel: structured Q&A, summary, rating, transcript.
  */
 export default function InterviewFeedbackPanel({ application }) {
   const [openTranscript, setOpenTranscript] = useState(false);
@@ -52,9 +59,13 @@ export default function InterviewFeedbackPanel({ application }) {
     interviewRating,
     interviewTechnicalRating,
     interviewTranscript,
+    interviewTurns,
     interviewAudioUrl,
     status,
   } = application;
+
+  const qaTurns = scoredTurns(interviewTurns);
+  const closing = closingTurn(interviewTurns);
 
   const hasInterviewData =
     interviewStatus === "completed" ||
@@ -62,9 +73,9 @@ export default function InterviewFeedbackPanel({ application }) {
     interviewStatus === "pending" ||
     !!interviewSummary ||
     !!interviewTranscript ||
+    qaTurns.length > 0 ||
     typeof interviewRating === "number";
 
-  // Show pending hint for candidates who cleared CV gate but haven't interviewed
   const showPendingHint =
     !interviewStatus &&
     typeof application.cvRating === "number" &&
@@ -75,9 +86,20 @@ export default function InterviewFeedbackPanel({ application }) {
   if (!hasInterviewData && !showPendingHint) return null;
 
   async function copyTranscript() {
-    if (!interviewTranscript) return;
+    const text =
+      qaTurns.length > 0
+        ? qaTurns
+            .map(
+              (t, i) =>
+                `Q${i + 1}. ${t.question}\nCandidate: ${
+                  t.answer?.trim() || "No answer recorded."
+                }`
+            )
+            .join("\n\n")
+        : interviewTranscript;
+    if (!text) return;
     try {
-      await navigator.clipboard.writeText(interviewTranscript);
+      await navigator.clipboard.writeText(text);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
@@ -136,6 +158,35 @@ export default function InterviewFeedbackPanel({ application }) {
         </div>
       )}
 
+      {qaTurns.length > 0 && (
+        <div className="mt-3 space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+            Questions & answers
+          </p>
+          {qaTurns.map((t, i) => (
+            <div
+              key={`${t.order}-${i}`}
+              className="rounded-lg border border-gray-100 bg-gray-50 p-3 text-xs text-gray-700"
+            >
+              <p className="font-semibold text-gray-800">
+                Q{i + 1}. {t.question}
+              </p>
+              <p className="mt-1.5 text-gray-600">
+                <span className="font-medium text-gray-700">Candidate: </span>
+                {t.answer?.trim() || "No answer recorded."}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {closing?.question && (
+        <div className="mt-3 rounded-lg border border-amber-100 bg-amber-50/60 p-3 text-xs text-amber-900">
+          <span className="font-semibold">Closing: </span>
+          {closing.question}
+        </div>
+      )}
+
       {interviewAudioUrl && (
         <div className="mt-3 flex items-center gap-2 text-xs text-gray-600">
           <HiOutlineMusicalNote className="h-4 w-4 text-gray-400" />
@@ -150,7 +201,7 @@ export default function InterviewFeedbackPanel({ application }) {
         </div>
       )}
 
-      {interviewTranscript && (
+      {(interviewTranscript || qaTurns.length > 0) && (
         <div className="mt-3">
           <div className="flex items-center gap-2">
             <button
@@ -163,7 +214,7 @@ export default function InterviewFeedbackPanel({ application }) {
               ) : (
                 <HiOutlineChevronDown className="h-3.5 w-3.5" />
               )}
-              {openTranscript ? "Hide transcript" : "Show transcript"}
+              {openTranscript ? "Hide full transcript" : "Show full transcript"}
             </button>
             <button
               type="button"
@@ -180,7 +231,16 @@ export default function InterviewFeedbackPanel({ application }) {
           </div>
           {openTranscript && (
             <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded-lg border border-gray-100 bg-gray-50 p-3 text-[11px] leading-relaxed text-gray-600">
-              {interviewTranscript}
+              {qaTurns.length > 0
+                ? qaTurns
+                    .map(
+                      (t, i) =>
+                        `Q${i + 1}. ${t.question}\nCandidate: ${
+                          t.answer?.trim() || "No answer recorded."
+                        }`
+                    )
+                    .join("\n\n")
+                : interviewTranscript}
             </pre>
           )}
         </div>
