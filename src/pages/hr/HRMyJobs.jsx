@@ -163,7 +163,7 @@ export default function HRMyJobs() {
                 <th className="px-5 py-3 text-center">Interviews</th>
                 <th className="px-5 py-3">Posted On</th>
                 <th className="px-5 py-3">Status</th>
-                <th className="px-5 py-3 text-right">Actions</th>
+                <th className="px-5 py-3 text-center">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -211,7 +211,7 @@ export default function HRMyJobs() {
                     </td>
 
                     <td className="px-5 py-4">
-                      <div className="flex items-center justify-end gap-2 relative">
+                      <div className="flex items-center justify-center gap-2 relative">
                         {job.status === "draft" ? (
                           <button
                             onClick={() => publishJob(job)}
@@ -222,30 +222,30 @@ export default function HRMyJobs() {
                         ) : job.status === "closed" ? (
                           <Link
                             to={`/hr/applicants?job=${job._id}`}
-                            className="rounded-lg border px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 whitespace-nowrap"
+                            className="rounded-lg px-3 py-2 text-xs font-semibold text-gray-600 transition-all duration-150 hover:scale-105 hover:bg-blue-50 hover:text-blue-600 whitespace-nowrap"
                           >
                             View Details
                           </Link>
                         ) : (
                           <Link
                             to={`/hr/applicants?job=${job._id}`}
-                            className="rounded-lg border px-3 py-2 text-xs font-semibold text-blue-600 border-blue-200 hover:bg-blue-50 whitespace-nowrap"
+                            className="rounded-lg px-3 py-2 text-xs font-semibold text-blue-600 transition-all duration-150 hover:scale-105 hover:bg-blue-50 whitespace-nowrap"
                           >
                             View Applicants
                           </Link>
                         )}
 
                         <Link
-                          to={`/hr/post-job?edit=${job._id}`}
+                          to={`/hr/jobs/${job._id}/edit`}
                           title="Edit"
-                          className="rounded-lg border p-2 text-gray-500 hover:bg-gray-50"
+                          className="rounded-lg p-2 text-gray-500 transition-all duration-150 hover:scale-110 hover:bg-blue-50 hover:text-blue-600"
                         >
                           <HiOutlinePencil className="h-4 w-4" />
                         </Link>
 
                         <button
                           onClick={() => setOpenMenuId(openMenuId === job._id ? null : job._id)}
-                          className="rounded-lg border p-2 text-gray-500 hover:bg-gray-50"
+                          className="rounded-lg p-2 text-gray-500 transition-all duration-150 hover:scale-110 hover:bg-blue-50 hover:text-blue-600"
                         >
                           <HiOutlineEllipsisVertical className="h-4 w-4" />
                         </button>

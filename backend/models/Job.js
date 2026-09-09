@@ -7,6 +7,15 @@ const jobSchema = new mongoose.Schema(
     companyRef: { type: mongoose.Schema.Types.ObjectId, ref: "Company" },
     city: { type: String, required: true },
     description: { type: String, required: true },
+
+    // Structured description sections — stored separately so the candidate
+    // view can always show real "About / Responsibilities / Requirements"
+    // headings instead of guessing where one section ends and the next
+    // begins from a single merged text blob.
+    aboutRole: { type: String },
+    responsibilities: { type: String },
+    requirements: { type: String },
+
     salary: { type: String },
     type: {
       type: String,

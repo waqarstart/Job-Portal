@@ -104,7 +104,7 @@ export default function AdminLayout({ children, title }) {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-8">{children}</main>
+        <main className="flex-1 overflow-y-auto p-8 hide-scrollbar">{children}</main>
       </div>
     </div>
   );

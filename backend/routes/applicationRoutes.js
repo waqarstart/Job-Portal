@@ -101,6 +101,14 @@ router.post(
   async (req, res) => {
     try {
 
+      // HR and admin accounts can browse jobs but shouldn't submit
+      // applications as a "candidate" — this mirrors the frontend guard.
+      if (req.user.role === "hr" || req.user.role === "admin") {
+        return res.status(403).json({
+          message: "HR and admin accounts can't apply to jobs.",
+        });
+      }
+
       // ───────────────────────────────────────────────────────
       // Check whether user already applied
       // ───────────────────────────────────────────────────────
@@ -423,6 +431,7 @@ router.patch("/:id/interview", requireAuth, requireHR, async (req, res) => {
       interviewerCount,
       interviewStatus,
       interviewCancelReason,
+      interviewRemovalRequestedAt,
     } = req.body;
 
     const application = await Application.findById(req.params.id);
@@ -438,6 +447,8 @@ router.patch("/:id/interview", requireAuth, requireHR, async (req, res) => {
     if (interviewerCount !== undefined) application.interviewerCount = interviewerCount;
     if (interviewStatus !== undefined) application.interviewStatus = interviewStatus;
     if (interviewCancelReason !== undefined) application.interviewCancelReason = interviewCancelReason;
+    // `null` explicitly clears it (used to undo a pending removal)
+    if (interviewRemovalRequestedAt !== undefined) application.interviewRemovalRequestedAt = interviewRemovalRequestedAt;
 
     await application.save();
 

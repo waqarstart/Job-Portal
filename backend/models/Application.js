@@ -85,6 +85,10 @@ const applicationSchema = new mongoose.Schema(
       enum: ["pending", "in_progress", "completed", "cancelled"],
     },
     interviewCancelReason: String,
+    // Set when HR clicks "Remove" on a cancelled/completed interview — the
+    // cleanup job clears the interview's scheduling fields (making it drop
+    // out of the HR Interviews list) once this is 2+ days old.
+    interviewRemovalRequestedAt: Date,
 
     // LiveAvatar
     liveAvatarSessionId: String,

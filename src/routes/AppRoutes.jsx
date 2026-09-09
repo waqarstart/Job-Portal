@@ -35,6 +35,7 @@ import AdminNotifications from "../pages/admin/AdminNotifications";
 import AdminSettings from "../pages/admin/AdminSettings";
 import HRDashboard from "../pages/hr/HRDashboard";
 import HRPostJob from "../pages/hr/HRPostJob";
+import HREditJob from "../pages/hr/HREditJob";
 import HRMyJobs from "../pages/hr/HRMyJobs";
 import HRApplicants from "../pages/hr/HRApplicants";
 import HRInterviews from "../pages/hr/HRInterviews";
@@ -161,6 +162,7 @@ export default function AppRoutes() {
         {/* HR routes */}
         <Route path="/hr/dashboard" element={<HRRoute><HRDashboard /></HRRoute>} />
         <Route path="/hr/post-job" element={<HRRoute><HRPostJob /></HRRoute>} />
+        <Route path="/hr/jobs/:id/edit" element={<HRRoute><HREditJob /></HRRoute>} />
         <Route path="/hr/jobs" element={<HRRoute><HRMyJobs /></HRRoute>} />
         <Route path="/hr/applicants" element={<HRRoute><HRApplicants /></HRRoute>} />
         <Route path="/hr/interviews" element={<HRRoute><HRInterviews /></HRRoute>} />

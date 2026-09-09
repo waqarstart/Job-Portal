@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import HRLayout from "../../layouts/HRLayout";
+import CityAutocomplete from "../../components/CityAutocomplete";
 import { createHRJob, getHRJob, updateHRJob } from "../../services/hrService";
 import {
   HiOutlineBriefcase,
@@ -33,13 +34,13 @@ const STEPS = [
 const JOB_TYPES   = ["Full Time", "Part Time", "Internship", "Contract", "Freelance"];
 const WORK_MODES  = ["On-site", "Remote", "Hybrid"];
 const EXP_LEVELS  = ["Entry Level", "1 - 2 Years", "3 - 5 Years", "5 - 8 Years", "8+ Years"];
-const PAY_PERIODS = ["Per Month", "Per Year", "Per Hour", "Fixed"];
+const PAY_PERIODS = ["Monthly", "Yearly", "Hourly", "Fixed"];
 const CATEGORIES  = ["Sales", "Marketing", "IT & Software", "Customer Support", "Finance", "Design", "HR & Admin", "Data Science"];
 
 const INIT = {
   title: "", company: "", type: "Full Time", workMode: "On-site",
   city: "", experienceLevel: "1 - 2 Years", category: CATEGORIES[0],
-  salaryMin: "", salaryMax: "", salaryPeriod: "Per Month",
+  salaryMin: "", salaryMax: "", salaryPeriod: "Monthly",
   deadline: "", aboutRole: "", responsibilities: "", requirements: "",
   skills: [],
   interviewQuestions: [""],
@@ -405,13 +406,13 @@ export default function HRPostJob() {
           category: job.category || CATEGORIES[0],
           salaryMin: salaryMatch?.[1]?.replace(/,/g, "") || "",
           salaryMax: salaryMatch?.[2]?.replace(/,/g, "") || "",
-          salaryPeriod: (salaryMatch?.[3] || "Per Month").trim() || "Per Month",
+          salaryPeriod: (salaryMatch?.[3] || "Monthly").trim() || "Monthly",
           deadline: job.applicationDeadline
             ? new Date(job.applicationDeadline).toISOString().slice(0, 10)
             : "",
-          aboutRole: parts[0] || "",
-          responsibilities: parts[1] || "",
-          requirements: parts[2] || "",
+          aboutRole: job.aboutRole || parts[0] || "",
+          responsibilities: job.responsibilities || parts[1] || "",
+          requirements: job.requirements || parts[2] || "",
           skills: Array.isArray(job.skills) ? job.skills : [],
           interviewQuestions:
             Array.isArray(job.interviewQuestions) &&
@@ -476,6 +477,9 @@ export default function HRPostJob() {
       skills:   form.skills,
       city:     form.city,
       description: [form.aboutRole, form.responsibilities, form.requirements].filter(Boolean).join("\n\n"),
+      aboutRole: form.aboutRole,
+      responsibilities: form.responsibilities,
+      requirements: form.requirements,
       salary:   form.salaryMin ? `PKR ${form.salaryMin}${form.salaryMax ? ` - ${form.salaryMax}` : ""} ${form.salaryPeriod}` : "",
       applicationDeadline: form.deadline || undefined,
       interviewQuestions: form.interviewQuestions.filter((q) => q.trim()),
@@ -556,8 +560,13 @@ export default function HRPostJob() {
                   <Select icon={HiOutlineBuildingOffice2} options={WORK_MODES} value={form.workMode} onChange={(e) => set("workMode", e.target.value)} />
                 </Field>
                 <Field label="Location" required error={errors.city}>
-                  <Input icon={HiOutlineMapPin} placeholder="e.g. Lahore, Pakistan"
-                    hasError={!!errors.city} value={form.city} onChange={(e) => set("city", e.target.value)} />
+                  <div className={`rounded-xl border bg-white transition focus-within:ring-2 ${
+                    errors.city
+                      ? "border-red-300 bg-red-50/30 focus-within:border-red-400 focus-within:ring-red-100"
+                      : "border-gray-200 focus-within:border-blue-500 focus-within:ring-blue-100"
+                  }`}>
+                    <CityAutocomplete value={form.city} onChange={(v) => set("city", v)} />
+                  </div>
                 </Field>
                 <Field label="Experience Level" required>
                   <Select icon={HiOutlineClock} options={EXP_LEVELS} searchable value={form.experienceLevel} onChange={(e) => set("experienceLevel", e.target.value)} />

@@ -4,7 +4,10 @@ import {
   HiOutlineArrowLeft, HiOutlineMapPin, HiOutlineBriefcase,
   HiOutlineGlobeAlt, HiOutlineUsers, HiOutlineBuildingOffice2,
   HiOutlineBookmark, HiBookmark, HiOutlineDocumentText,
+  HiOutlineCalendarDays,
 } from "react-icons/hi2";
+import { FaLinkedinIn, FaFacebookF } from "react-icons/fa";
+import { FaXTwitter } from "react-icons/fa6";
 import Navbar from "../components/Navbar";
 import { getCompanyDetail } from "../services/jobService";
 import { saveJob, unsaveJob, getSavedJobs } from "../services/savedJobService";
@@ -39,7 +42,7 @@ function timeAgo(date) {
 export default function CompanyDetail() {
   const { name } = useParams();
   const navigate = useNavigate();
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, user } = useAuth();
 
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -86,11 +89,11 @@ export default function CompanyDetail() {
       <div className="mx-auto max-w-5xl px-4 sm:px-6 py-8">
 
         <button
-          onClick={() => navigate("/")}
+          onClick={() => navigate(-1)}
           className="flex items-center gap-1.5 rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition mb-5"
         >
           <HiOutlineArrowLeft className="h-4 w-4" />
-          Back to Home
+          {user?.role === "hr" ? "Back to Dashboard" : "Back to Home"}
         </button>
 
         {loading && (
@@ -108,65 +111,141 @@ export default function CompanyDetail() {
         {!loading && !error && data && (
           <>
             {/* Company header card */}
-            <div className="rounded-2xl border border-gray-100 bg-white shadow-sm p-6 mb-6">
-              <div className="flex flex-col sm:flex-row sm:items-start gap-5">
-                {data.company?.logo ? (
-                  <img
-                    src={`${FILE_BASE}${data.company.logo}`}
-                    alt={companyName}
-                    className="h-16 w-16 shrink-0 rounded-2xl object-cover border border-gray-100"
-                  />
-                ) : (
-                  <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl text-2xl font-bold text-white ${color}`}>
-                    {initial}
+            <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm mb-6">
+              {data.company?.coverImage && (
+                <div
+                  className="relative h-40 sm:h-52 bg-cover bg-center bg-gradient-to-br from-slate-800 via-slate-700 to-blue-900"
+                  style={{ backgroundImage: `url(${FILE_BASE}${data.company.coverImage})` }}
+                >
+                  <div className="absolute inset-0 bg-black/20" />
+                </div>
+              )}
+
+              <div className="p-6">
+                <div className="flex flex-col sm:flex-row sm:items-start gap-5">
+                  {data.company?.logo ? (
+                    <img
+                      src={`${FILE_BASE}${data.company.logo}`}
+                      alt={companyName}
+                      className="h-20 w-20 sm:h-24 sm:w-24 shrink-0 rounded-2xl object-cover border border-gray-100 shadow bg-white"
+                    />
+                  ) : (
+                    <div className={`flex h-20 w-20 sm:h-24 sm:w-24 shrink-0 items-center justify-center rounded-2xl text-2xl font-bold text-white border border-gray-100 shadow ${color}`}>
+                      {initial}
+                    </div>
+                  )}
+
+                  <div className="flex-1 min-w-0 pt-1">
+                    <h1 className="text-2xl font-bold text-gray-900">{companyName}</h1>
+
+                    {data.company ? (
+                      <>
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-sm text-gray-500">
+                          {data.company.industry && (
+                            <span className="flex items-center gap-1">
+                              <HiOutlineBuildingOffice2 className="h-4 w-4" />
+                              {data.company.industry}
+                            </span>
+                          )}
+                          {data.company.location && (
+                            <span className="flex items-center gap-1">
+                              <HiOutlineMapPin className="h-4 w-4" />
+                              {data.company.location}
+                            </span>
+                          )}
+                          {data.company.size && (
+                            <span className="flex items-center gap-1">
+                              <HiOutlineUsers className="h-4 w-4" />
+                              {data.company.size} employees
+                            </span>
+                          )}
+                          {data.company.foundedYear && (
+                            <span className="flex items-center gap-1">
+                              <HiOutlineCalendarDays className="h-4 w-4" />
+                              Founded {data.company.foundedYear}
+                            </span>
+                          )}
+                          {data.company.website && (
+                            <a
+                              href={data.company.website.startsWith("http") ? data.company.website : `https://${data.company.website}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="flex items-center gap-1 text-blue-600 hover:text-blue-700"
+                            >
+                              <HiOutlineGlobeAlt className="h-4 w-4" />
+                              Website
+                            </a>
+                          )}
+                        </div>
+
+                        {data.company.description && (
+                          <p className="mt-4 text-sm text-gray-600 leading-relaxed">{data.company.description}</p>
+                        )}
+                      </>
+                    ) : (
+                      <p className="mt-2 text-sm text-gray-400">No records — this company hasn't added their profile details yet.</p>
+                    )}
+                  </div>
+                </div>
+
+                {data.company?.mission && (
+                  <div className="mt-5 border-t border-gray-50 pt-5">
+                    <h3 className="text-sm font-bold text-gray-900">Our Mission</h3>
+                    <p className="mt-1 text-sm text-gray-600 leading-relaxed">{data.company.mission}</p>
                   </div>
                 )}
 
-                <div className="flex-1 min-w-0">
-                  <h1 className="text-2xl font-bold text-gray-900">{companyName}</h1>
+                {data.company?.culture && (
+                  <div className="mt-4">
+                    <h3 className="text-sm font-bold text-gray-900">Our Culture</h3>
+                    <p className="mt-1 text-sm text-gray-600 leading-relaxed">{data.company.culture}</p>
+                  </div>
+                )}
 
-                  {data.company ? (
-                    <>
-                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-sm text-gray-500">
-                        {data.company.industry && (
-                          <span className="flex items-center gap-1">
-                            <HiOutlineBuildingOffice2 className="h-4 w-4" />
-                            {data.company.industry}
-                          </span>
-                        )}
-                        {data.company.location && (
-                          <span className="flex items-center gap-1">
-                            <HiOutlineMapPin className="h-4 w-4" />
-                            {data.company.location}
-                          </span>
-                        )}
-                        {data.company.size && (
-                          <span className="flex items-center gap-1">
-                            <HiOutlineUsers className="h-4 w-4" />
-                            {data.company.size} employees
-                          </span>
-                        )}
-                        {data.company.website && (
-                          <a
-                            href={data.company.website.startsWith("http") ? data.company.website : `https://${data.company.website}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="flex items-center gap-1 text-blue-600 hover:text-blue-700"
-                          >
-                            <HiOutlineGlobeAlt className="h-4 w-4" />
-                            Website
-                          </a>
-                        )}
-                      </div>
+                {data.company?.gallery?.length > 0 && (
+                  <div className="mt-5 border-t border-gray-50 pt-5">
+                    <h3 className="text-sm font-bold text-gray-900 mb-3">Gallery</h3>
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                      {data.company.gallery.map((g, i) => (
+                        <div key={i} className="aspect-square overflow-hidden rounded-xl border border-gray-100">
+                          <img src={`${FILE_BASE}${g}`} alt="" className="h-full w-full object-cover" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
-                      {data.company.description && (
-                        <p className="mt-4 text-sm text-gray-600 leading-relaxed">{data.company.description}</p>
+                {data.company?.socialLinks && Object.values(data.company.socialLinks).some(Boolean) && (
+                  <div className="mt-5 border-t border-gray-50 pt-5">
+                    <h3 className="text-sm font-bold text-gray-900 mb-3">Follow Us</h3>
+                    <div className="flex items-center gap-2">
+                      {data.company.socialLinks.linkedin && (
+                        <a href={data.company.socialLinks.linkedin} target="_blank" rel="noreferrer"
+                          className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-white hover:opacity-90 transition">
+                          <FaLinkedinIn className="h-3.5 w-3.5" />
+                        </a>
                       )}
-                    </>
-                  ) : (
-                    <p className="mt-2 text-sm text-gray-400">No records — this company hasn't added their profile details yet.</p>
-                  )}
-                </div>
+                      {data.company.socialLinks.facebook && (
+                        <a href={data.company.socialLinks.facebook} target="_blank" rel="noreferrer"
+                          className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500 text-white hover:opacity-90 transition">
+                          <FaFacebookF className="h-3.5 w-3.5" />
+                        </a>
+                      )}
+                      {data.company.socialLinks.twitter && (
+                        <a href={data.company.socialLinks.twitter} target="_blank" rel="noreferrer"
+                          className="flex h-8 w-8 items-center justify-center rounded-full bg-black text-white hover:opacity-90 transition">
+                          <FaXTwitter className="h-3.5 w-3.5" />
+                        </a>
+                      )}
+                      {data.company.socialLinks.website && (
+                        <a href={data.company.socialLinks.website} target="_blank" rel="noreferrer"
+                          className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-600 text-white hover:opacity-90 transition">
+                          <HiOutlineGlobeAlt className="h-3.5 w-3.5" />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 

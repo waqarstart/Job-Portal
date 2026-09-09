@@ -597,6 +597,7 @@ export default function JobDetail() {
   const cameFromApplications = location.state?.from === "applications";
 
   const { isLoggedIn, user } = useAuth();
+  const isHrOrAdmin = user?.role === "hr" || user?.role === "admin";
 
   const [job, setJob] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -724,6 +725,8 @@ export default function JobDetail() {
       navigate("/login");
       return;
     }
+
+    if (isHrOrAdmin) return;
 
     setShowApply(true);
     setApplyStep(1);
@@ -949,11 +952,23 @@ export default function JobDetail() {
 
   if (!job) return null;
 
-  const {
-    about,
-    responsibilities,
-    requirements,
-  } = parseDescription(job.description);
+  // Prefer the structured fields HR actually filled in (About Role /
+  // Responsibilities / Requirements) — only fall back to guessing the
+  // split from the merged `description` blob for older jobs that predate
+  // those fields.
+  const hasStructuredSections = Boolean(
+    job.aboutRole || job.responsibilities || job.requirements
+  );
+
+  const fallback = parseDescription(job.description);
+
+  const about = hasStructuredSections ? (job.aboutRole || "") : fallback.about;
+  const responsibilities = hasStructuredSections
+    ? (job.responsibilities || "").split("\n").map((l) => l.replace(/^[-•*]\s*/, "").trim()).filter(Boolean)
+    : fallback.responsibilities;
+  const requirements = hasStructuredSections
+    ? (job.requirements || "").split("\n").map((l) => l.replace(/^[-•*]\s*/, "").trim()).filter(Boolean)
+    : fallback.requirements;
 
   const initial = (
     job.company || "C"
@@ -1087,11 +1102,14 @@ export default function JobDetail() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleApply}
-                  disabled={applied}
+                  disabled={applied || isHrOrAdmin}
+                  title={isHrOrAdmin ? "HR and admin accounts can view jobs but can't apply." : undefined}
                   className="flex-1 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-60 transition"
                 >
                   {applied
                     ? "Applied ✓"
+                    : isHrOrAdmin
+                    ? "View Only"
                     : "Apply Now"}
                 </button>
 
@@ -1111,6 +1129,12 @@ export default function JobDetail() {
                   )}
                 </button>
               </div>
+
+              {isHrOrAdmin && (
+                <p className="text-[11px] text-gray-400 text-center">
+                  HR/admin accounts can browse jobs but can't apply.
+                </p>
+              )}
 
               <ShareDropdown
                 jobTitle={job.title}
@@ -1305,9 +1329,9 @@ export default function JobDetail() {
                     icon: HiOutlineCalendarDays,
                     label:
                       "Application Deadline",
-                    value: job.deadline
+                    value: job.applicationDeadline
                       ? new Date(
-                          job.deadline
+                          job.applicationDeadline
                         ).toLocaleDateString(
                           "en-US",
                           {
@@ -1316,7 +1340,7 @@ export default function JobDetail() {
                             year: "numeric",
                           }
                         )
-                      : "Not specified",
+                      : "---",
                   },
                 ].map((row) => (
                   <div
@@ -1327,12 +1351,12 @@ export default function JobDetail() {
                       <row.icon className="h-4 w-4 text-gray-400" />
                     </div>
 
-                    <div className="flex-1 flex items-center justify-between gap-2 min-w-0">
-                      <p className="text-xs text-gray-400 whitespace-nowrap shrink-0">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-gray-400">
                         {row.label}
                       </p>
 
-                      <p className="text-sm font-semibold text-gray-800 text-right truncate">
+                      <p className="text-sm font-semibold text-gray-800">
                         {row.value}
                       </p>
                     </div>

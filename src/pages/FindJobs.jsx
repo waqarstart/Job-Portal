@@ -154,7 +154,18 @@ function JobPanel({ job, saved, onSave, onApply, onClose }) {
 
   const initial = (job.company || "C")[0].toUpperCase();
   const salary = formatSalary(job.salary);
-  const { about, responsibilities, requirements } = parseDesc(job.description);
+
+  // Prefer the structured fields HR filled in; only fall back to guessing
+  // the split from the merged `description` blob for older jobs.
+  const hasStructuredSections = Boolean(job.aboutRole || job.responsibilities || job.requirements);
+  const fallback = parseDesc(job.description);
+  const about = hasStructuredSections ? (job.aboutRole || "") : fallback.about;
+  const responsibilities = hasStructuredSections
+    ? (job.responsibilities || "").split("\n").map((l) => l.replace(/^[-•*]\s*/, "").trim()).filter(Boolean)
+    : fallback.responsibilities;
+  const requirements = hasStructuredSections
+    ? (job.requirements || "").split("\n").map((l) => l.replace(/^[-•*]\s*/, "").trim()).filter(Boolean)
+    : fallback.requirements;
 
   return (
     <div className="rounded-2xl border border-gray-100 bg-white shadow-sm flex flex-col h-full overflow-hidden">

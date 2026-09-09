@@ -32,7 +32,7 @@ const navItems = [
   { to: "/dashboard/settings", label: "Settings", icon: HiOutlineCog6Tooth },
 ];
 
-export default function CandidateLayout({ children, title, profilePicture: picProp }) {
+export default function CandidateLayout({ children, title, subtitle, profilePicture: picProp }) {
   const { user, logout } = useAuth();
   const location = useLocation();
   const [notifications, setNotifications] = useState(getCachedNotifications() || []);
@@ -135,7 +135,10 @@ export default function CandidateLayout({ children, title, profilePicture: picPr
       <div className="flex flex-1 flex-col overflow-hidden">
         <header className="flex shrink-0 items-center justify-between border-b bg-white px-8 py-4">
           {/* Fix 5: show only page title in bold, no greeting */}
-          <h1 className="text-xl font-bold text-gray-900">{title || "Dashboard"}</h1>
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">{title || "Dashboard"}</h1>
+            {subtitle && <p className="mt-0.5 text-sm text-gray-500">{subtitle}</p>}
+          </div>
 
           <div className="flex items-center gap-3">
             {/* Fix 4: working notification bell */}
@@ -151,7 +154,7 @@ export default function CandidateLayout({ children, title, profilePicture: picPr
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-8">{children}</main>
+        <main className="flex-1 overflow-y-auto p-8 hide-scrollbar">{children}</main>
       </div>
     </div>
   );

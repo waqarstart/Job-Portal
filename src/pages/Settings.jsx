@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
-import { HiOutlineChevronRight } from "react-icons/hi2";
+import {
+  HiOutlineChevronRight, HiOutlineUser, HiOutlineEnvelope,
+  HiOutlineLockClosed, HiOutlineShieldCheck, HiOutlineBell,
+  HiOutlineShieldExclamation, HiOutlineExclamationTriangle,
+} from "react-icons/hi2";
 import CandidateLayout from "../layouts/CandidateLayout";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -31,13 +35,15 @@ export default function Settings() {
   }
 
   return (
-    <CandidateLayout title="Settings" subtitle="Manage your account, privacy and notification preferences.">
+    <CandidateLayout title="Settings" subtitle="Manage your account, preferences and privacy settings.">
       <div className="max-w-2xl space-y-6">
 
         {/* ── Account ── */}
-        <SettingsSection title="Account">
+        <SettingsSection title="Account" icon={HiOutlineUser} iconBg="bg-blue-100" iconColor="text-blue-600">
           <ExpandableRow
+            icon={HiOutlineEnvelope}
             label="Change Email"
+            description="Update your email address"
             open={expanded === "email"}
             onToggle={() => toggle("email")}
           >
@@ -45,7 +51,9 @@ export default function Settings() {
           </ExpandableRow>
 
           <ExpandableRow
+            icon={HiOutlineLockClosed}
             label="Change Password"
+            description="Update your account password"
             open={expanded === "password"}
             onToggle={() => toggle("password")}
           >
@@ -53,7 +61,9 @@ export default function Settings() {
           </ExpandableRow>
 
           <ExpandableRow
+            icon={HiOutlineShieldCheck}
             label="Two-Factor Authentication"
+            description="Add an extra layer of security to your account"
             open={expanded === "2fa"}
             onToggle={() => toggle("2fa")}
           >
@@ -63,24 +73,28 @@ export default function Settings() {
 
         {/* ── Notifications ── */}
         {profile && (
-          <SettingsSection title="Notifications">
+          <SettingsSection title="Notifications" icon={HiOutlineBell} iconBg="bg-violet-100" iconColor="text-violet-600">
             <ToggleRow
               label="Email Notifications"
+              description="Receive email updates about your account and applications"
               value={profile.emailNotifications}
               onChange={() => handleToggle("emailNotifications")}
             />
             <ToggleRow
               label="Application Updates"
+              description="Get notified about your application status changes"
               value={profile.applicationUpdates}
               onChange={() => handleToggle("applicationUpdates")}
             />
             <ToggleRow
               label="Interview Reminders"
+              description="Receive reminders for upcoming interviews"
               value={profile.interviewReminders}
               onChange={() => handleToggle("interviewReminders")}
             />
             <ToggleRow
               label="Job Recommendations"
+              description="Receive job recommendations based on your profile"
               value={profile.jobRecommendations}
               onChange={() => handleToggle("jobRecommendations")}
             />
@@ -89,7 +103,7 @@ export default function Settings() {
 
         {/* ── Privacy ── */}
         {profile && (
-          <SettingsSection title="Privacy">
+          <SettingsSection title="Privacy" icon={HiOutlineShieldExclamation} iconBg="bg-emerald-100" iconColor="text-emerald-600">
             <ToggleRow
               label="Profile Visibility"
               description="Allow employers to find your profile"
@@ -103,7 +117,7 @@ export default function Settings() {
               onChange={() => handleToggle("cvPrivate")}
             />
             <ToggleRow
-              label="Search Appearance"
+              label="Search Appearances"
               description="Appear in employer and recruiter searches"
               value={profile.searchAppearance}
               onChange={() => handleToggle("searchAppearance")}
@@ -112,9 +126,10 @@ export default function Settings() {
         )}
 
         {/* ── Danger Zone ── */}
-        <SettingsSection title="Danger Zone" danger>
+        <SettingsSection title="Danger Zone" icon={HiOutlineExclamationTriangle} danger>
           <ExpandableRow
             label="Deactivate Account"
+            description="Temporarily disable your account and hide your profile"
             open={expanded === "deactivate"}
             onToggle={() => toggle("deactivate")}
             danger
@@ -124,6 +139,7 @@ export default function Settings() {
 
           <ExpandableRow
             label="Delete Account"
+            description="Permanently delete your account and all of your data"
             open={expanded === "delete"}
             onToggle={() => toggle("delete")}
             danger
@@ -131,6 +147,16 @@ export default function Settings() {
             <DeleteForm logout={logout} />
           </ExpandableRow>
         </SettingsSection>
+
+        {/* ── Footer note ── */}
+        <div className="flex items-center justify-center gap-2 pb-6 text-center text-sm text-gray-400">
+          <HiOutlineShieldCheck className="h-4 w-4 shrink-0" />
+          <p>
+            Your privacy and security are important to us. Read our{" "}
+            <a href="#" className="font-medium text-blue-600 hover:underline">Privacy Policy</a> and{" "}
+            <a href="#" className="font-medium text-blue-600 hover:underline">Terms of Service</a>.
+          </p>
+        </div>
       </div>
     </CandidateLayout>
   );
@@ -138,29 +164,40 @@ export default function Settings() {
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
-function SettingsSection({ title, children, danger }) {
+function SettingsSection({ title, icon: Icon, iconBg, iconColor, children, danger }) {
   return (
-    <div className="overflow-hidden rounded-2xl border bg-white shadow-sm">
-      <div className={`border-b px-5 py-4 ${danger ? "bg-red-50" : "bg-gray-50"}`}>
-        <h2 className={`font-semibold ${danger ? "text-red-700" : "text-gray-800"}`}>{title}</h2>
+    <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+      <div className={`flex items-center gap-3 px-5 py-4 ${danger ? "bg-red-50" : ""}`}>
+        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${danger ? "bg-red-100" : iconBg}`}>
+          <Icon className={`h-5 w-5 ${danger ? "text-red-600" : iconColor}`} />
+        </div>
+        <h2 className={`font-bold ${danger ? "text-red-700" : "text-gray-900"}`}>{title}</h2>
       </div>
-      <div className="divide-y">{children}</div>
+      <div className="divide-y divide-gray-50">{children}</div>
     </div>
   );
 }
 
-function ExpandableRow({ label, open, onToggle, children, danger }) {
+function ExpandableRow({ icon: Icon, label, description, open, onToggle, children, danger }) {
   return (
     <div>
       <button
         onClick={onToggle}
-        className="flex w-full items-center justify-between px-5 py-4 text-left text-sm hover:bg-gray-50"
+        className="flex w-full items-center gap-3 px-5 py-4 text-left hover:bg-gray-50/60 transition"
       >
-        <span className={danger ? "text-red-600" : "text-gray-700"}>{label}</span>
-        <HiOutlineChevronRight className={`h-4 w-4 text-gray-400 transition-transform ${open ? "rotate-90" : ""}`} />
+        {Icon && (
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+            <Icon className="h-[18px] w-[18px]" />
+          </div>
+        )}
+        <div className="min-w-0 flex-1">
+          <p className={`text-sm font-semibold ${danger ? "text-red-600" : "text-gray-900"}`}>{label}</p>
+          {description && <p className="text-xs text-gray-400">{description}</p>}
+        </div>
+        <HiOutlineChevronRight className={`h-4 w-4 shrink-0 text-gray-300 transition-transform ${open ? "rotate-90" : ""}`} />
       </button>
       {open && (
-        <div className="border-t bg-gray-50 px-5 py-4">
+        <div className="border-t border-gray-50 bg-gray-50/60 px-5 py-4">
           {children}
         </div>
       )}
@@ -172,7 +209,7 @@ function ToggleRow({ label, description, value, onChange }) {
   return (
     <div className="flex items-center justify-between px-5 py-4">
       <div>
-        <p className="text-sm text-gray-700">{label}</p>
+        <p className="text-sm font-semibold text-gray-900">{label}</p>
         {description && <p className="text-xs text-gray-400">{description}</p>}
       </div>
       <button

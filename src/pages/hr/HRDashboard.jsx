@@ -157,7 +157,7 @@ export default function HRDashboard() {
             <Dropdown value={pipelinePeriod} onChange={handlePeriodChange} options={PERIOD_OPTIONS} />
           </div>
 
-          <div className={`flex items-center overflow-x-auto gap-2 pb-1 transition-opacity ${pipelineLoading ? "opacity-50" : ""}`}>
+          <div className={`flex items-center overflow-x-auto hide-scrollbar gap-2 pb-1 transition-opacity ${pipelineLoading ? "opacity-50" : ""}`}>
             {PIPELINE.map((stage, i) => (
               <div key={stage.key} className="flex items-center shrink-0">
                 <div className={`w-28 rounded-xl border p-4 text-center ${stage.bg}`}>

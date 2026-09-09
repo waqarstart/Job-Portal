@@ -4,10 +4,12 @@ import {
   HiOutlineMagnifyingGlass, HiOutlineUserGroup,
   HiOutlineEllipsisVertical, HiOutlineChevronLeft, HiOutlineChevronRight,
   HiOutlinePlus, HiOutlineXMark, HiOutlineSparkles, HiOutlineEnvelope,
-  HiOutlineVideoCamera,
+  HiOutlineVideoCamera, HiOutlineExclamationTriangle,
+  HiOutlineChatBubbleLeftRight, HiOutlineChevronDown, HiOutlineTrash,
 } from "react-icons/hi2";
 import HRLayout from "../../layouts/HRLayout";
 import Dropdown from "../../components/Dropdown";
+import InterviewFeedbackPanel from "../../components/InterviewFeedbackPanel";
 import { getHRInterviews, getSchedulableApplicants } from "../../services/hrService";
 import { scheduleInterview } from "../../services/applicationService";
 
@@ -27,6 +29,12 @@ const PERIOD_OPTIONS = [
   { value: "AM", label: "AM" },
   { value: "PM", label: "PM" },
 ];
+
+const INTERVIEW_STATUS_BADGE = {
+  pending:   { label: "Pending",   badge: "bg-amber-50 text-amber-700" },
+  completed: { label: "Completed", badge: "bg-green-50 text-green-700" },
+  cancelled: { label: "Cancelled", badge: "bg-red-50 text-red-700" },
+};
 
 const APP_STATUS_META = {
   applied: { label: "Applied", badge: "bg-gray-100 text-gray-700" },
@@ -61,6 +69,7 @@ export default function HRInterviews() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [openMenuId, setOpenMenuId] = useState(null);
+  const [expandedFeedbackId, setExpandedFeedbackId] = useState(null);
 
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [modalDataReady, setModalDataReady] = useState(false);
@@ -68,6 +77,10 @@ export default function HRInterviews() {
   const [form, setForm] = useState(emptyForm());
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
+
+  const [cancelTarget, setCancelTarget] = useState(null); // the app pending cancel confirmation
+  const [cancelReason, setCancelReason] = useState("");
+  const [removeTarget, setRemoveTarget] = useState(null); // the app pending remove confirmation
 
   function emptyForm() {
     return {
@@ -111,7 +124,9 @@ export default function HRInterviews() {
   const filtered = useMemo(() => {
     let list = [...interviews];
 
-    if (statusFilter !== "all") {
+    if (statusFilter === "removed") {
+      list = list.filter((i) => Boolean(i.interviewRemovalRequestedAt));
+    } else if (statusFilter !== "all") {
       list = list.filter((i) => i.interviewStatus === statusFilter);
     }
 
@@ -141,15 +156,38 @@ export default function HRInterviews() {
 
   async function cancelInterview(app) {
     setOpenMenuId(null);
-    const reason = prompt("Reason for cancelling this interview?");
-    if (reason === null) return;
-    await scheduleInterview(app._id, { interviewStatus: "cancelled", interviewCancelReason: reason });
+    setCancelReason("");
+    setCancelTarget(app);
+  }
+
+  async function confirmCancelInterview() {
+    const app = cancelTarget;
+    setCancelTarget(null);
+    if (!app) return;
+    await scheduleInterview(app._id, {
+      interviewStatus: "cancelled",
+      interviewCancelReason: cancelReason.trim(),
+    });
     load();
   }
 
   async function reopenInterview(app) {
     setOpenMenuId(null);
     await scheduleInterview(app._id, { interviewStatus: "pending" });
+    load();
+  }
+
+  async function confirmRemoveInterview() {
+    const app = removeTarget;
+    setRemoveTarget(null);
+    if (!app) return;
+    await scheduleInterview(app._id, { interviewRemovalRequestedAt: new Date().toISOString() });
+    load();
+  }
+
+  async function undoRemoval(app) {
+    setOpenMenuId(null);
+    await scheduleInterview(app._id, { interviewRemovalRequestedAt: null });
     load();
   }
 
@@ -200,11 +238,17 @@ export default function HRInterviews() {
     }
   }
 
+  const removedCount = useMemo(
+    () => interviews.filter((i) => Boolean(i.interviewRemovalRequestedAt)).length,
+    [interviews]
+  );
+
   const STAT_CARDS = [
-    { icon: HiOutlineCalendarDays, bg: "bg-blue-50", color: "text-blue-600", value: stats.total, label: "Total Interviews" },
-    { icon: HiOutlineClock, bg: "bg-amber-50", color: "text-amber-600", value: stats.scheduled, label: "Scheduled" },
-    { icon: HiOutlineCheckCircle, bg: "bg-green-50", color: "text-green-600", value: stats.completed, label: "Completed" },
-    { icon: HiOutlineXCircle, bg: "bg-red-50", color: "text-red-600", value: stats.cancelled, label: "Cancelled" },
+    { key: "all",       icon: HiOutlineCalendarDays, bg: "bg-blue-50",  color: "text-blue-600",  value: stats.total,     label: "All" },
+    { key: "pending",   icon: HiOutlineClock,        bg: "bg-amber-50", color: "text-amber-600", value: stats.scheduled, label: "Scheduled" },
+    { key: "completed", icon: HiOutlineCheckCircle,  bg: "bg-green-50", color: "text-green-600", value: stats.completed, label: "Completed" },
+    { key: "cancelled", icon: HiOutlineXCircle,      bg: "bg-red-50",   color: "text-red-600",   value: stats.cancelled, label: "Cancelled" },
+    { key: "removed",   icon: HiOutlineTrash,        bg: "bg-gray-100", color: "text-gray-600",  value: removedCount,    label: "Removed" },
   ];
 
   return (
@@ -221,22 +265,32 @@ export default function HRInterviews() {
         </button>
       }
     >
-      {/* Stat cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {STAT_CARDS.map((c) => (
-          <div key={c.label} className="rounded-2xl border bg-white p-5 shadow-sm">
-            <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${c.bg} ${c.color} mb-3`}>
-              <c.icon className="h-5 w-5" />
-            </div>
-            <p className="text-2xl font-bold text-gray-900">{c.value}</p>
-            <p className="text-sm font-medium text-gray-700">{c.label}</p>
-          </div>
-        ))}
+      {/* Status tabs (also filter the list below) */}
+      <div className="mb-0 flex gap-0 border-b border-gray-200 overflow-x-auto hide-scrollbar">
+        {STAT_CARDS.map((c) => {
+          const active = statusFilter === c.key;
+          return (
+            <button
+              key={c.key}
+              onClick={() => setStatusFilter(c.key)}
+              className={`whitespace-nowrap px-4 py-2.5 text-sm font-medium transition border-b-2 -mb-px ${
+                active ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              {c.label}
+              <span className={`ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
+                active ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-500"
+              }`}>
+                {c.value}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
-      {/* Search + status filter */}
-      <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between mb-5">
-        <div className="relative flex-1">
+      {/* Search */}
+      <div className="mt-5 mb-5">
+        <div className="relative">
           <HiOutlineMagnifyingGlass className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <input
             type="text"
@@ -246,8 +300,6 @@ export default function HRInterviews() {
             className="w-full rounded-xl border bg-white pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
-
-        <Dropdown value={statusFilter} onChange={setStatusFilter} options={STATUS_OPTIONS} buttonClassName="w-full sm:w-auto" />
       </div>
 
       {loading && <p className="text-gray-500">Loading...</p>}
@@ -255,9 +307,13 @@ export default function HRInterviews() {
       {/* Interview cards */}
       <div className="space-y-4">
         {pageItems.map((app) => {
-          const meta = APP_STATUS_META[app.status] || APP_STATUS_META.applied;
+          const meta = INTERVIEW_STATUS_BADGE[app.interviewStatus] || INTERVIEW_STATUS_BADGE.pending;
           const isCancelled = app.interviewStatus === "cancelled";
           const isCompleted = app.interviewStatus === "completed";
+          const isMarkedForRemoval = Boolean(app.interviewRemovalRequestedAt);
+          const removalDaysLeft = isMarkedForRemoval
+            ? Math.max(0, 2 - Math.floor((Date.now() - new Date(app.interviewRemovalRequestedAt)) / 86400000))
+            : null;
 
           return (
             <div key={app._id} className="rounded-2xl border bg-white p-5 shadow-sm">
@@ -280,6 +336,11 @@ export default function HRInterviews() {
 
                 <div className="flex items-center gap-2 shrink-0">
                   <span className={`rounded-full px-3 py-1 text-xs font-semibold ${meta.badge}`}>{meta.label}</span>
+                  {isMarkedForRemoval && (
+                    <span className="flex items-center gap-1 rounded-full bg-gray-800 px-3 py-1 text-xs font-semibold text-white" title="This will disappear from the Interviews list automatically">
+                      Removed{removalDaysLeft > 0 ? ` · ${removalDaysLeft}d left` : ""}
+                    </span>
+                  )}
 
                   <div className="relative">
                     <button
@@ -303,9 +364,19 @@ export default function HRInterviews() {
                               </button>
                             </>
                           )}
-                          {(isCancelled || isCompleted) && (
-                            <button onClick={() => reopenInterview(app)} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
-                              Reopen as Scheduled
+                          {(isCancelled || isCompleted) && !app.interviewRemovalRequestedAt && (
+                            <>
+                              <button onClick={() => reopenInterview(app)} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                                Reopen as Scheduled
+                              </button>
+                              <button onClick={() => { setOpenMenuId(null); setRemoveTarget(app); }} className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50">
+                                Remove
+                              </button>
+                            </>
+                          )}
+                          {app.interviewRemovalRequestedAt && (
+                            <button onClick={() => undoRemoval(app)} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                              Undo Removal
                             </button>
                           )}
                         </div>
@@ -334,6 +405,23 @@ export default function HRInterviews() {
                 <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">
                   Reason: {app.interviewCancelReason}
                 </p>
+              )}
+
+              {isCompleted && (
+                <div className="mt-4 border-t border-gray-50 pt-3">
+                  <button
+                    onClick={() => setExpandedFeedbackId(expandedFeedbackId === app._id ? null : app._id)}
+                    className="flex items-center gap-1.5 text-sm font-semibold text-indigo-600 hover:text-indigo-700 transition"
+                  >
+                    <HiOutlineChatBubbleLeftRight className="h-4 w-4" />
+                    {expandedFeedbackId === app._id ? "Hide Feedback" : "View Feedback"}
+                    <HiOutlineChevronDown className={`h-4 w-4 transition-transform ${expandedFeedbackId === app._id ? "rotate-180" : ""}`} />
+                  </button>
+
+                  {expandedFeedbackId === app._id && (
+                    <InterviewFeedbackPanel application={app} />
+                  )}
+                </div>
               )}
             </div>
           );
@@ -495,6 +583,7 @@ export default function HRInterviews() {
                 <label className="text-sm font-medium text-gray-700">Interview Type</label>
                 <input
                   type="text"
+                  autoComplete="off"
                   value={form.type}
                   onChange={(e) => setForm({ ...form, type: e.target.value })}
                   placeholder="e.g. Technical Round, Technical + HR Round"
@@ -525,6 +614,77 @@ export default function HRInterviews() {
             </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Cancel confirmation popup ── */}
+      {cancelTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl text-center">
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-500">
+              <HiOutlineExclamationTriangle className="h-6 w-6" />
+            </div>
+            <h3 className="font-bold text-gray-900">Cancel this interview?</h3>
+            <p className="mt-1 text-sm text-gray-500">
+              {cancelTarget.user?.name || "This candidate"} will no longer see it as scheduled.
+            </p>
+
+            <div className="mt-4 text-left">
+              <label className="text-sm font-medium text-gray-700">Reason (optional)</label>
+              <textarea
+                autoFocus
+                rows={3}
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="e.g. Candidate requested a reschedule, position on hold..."
+                className="mt-1 w-full resize-none rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-200 focus:border-red-400"
+              />
+            </div>
+
+            <div className="mt-5 flex gap-3">
+              <button
+                onClick={() => setCancelTarget(null)}
+                className="flex-1 rounded-lg border px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
+              >
+                Keep It
+              </button>
+              <button
+                onClick={confirmCancelInterview}
+                className="flex-1 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700 transition"
+              >
+                Yes, Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Remove confirmation popup ── */}
+      {removeTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl text-center">
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 text-gray-600">
+              <HiOutlineTrash className="h-6 w-6" />
+            </div>
+            <h3 className="font-bold text-gray-900">Remove this interview?</h3>
+            <p className="mt-1 text-sm text-gray-500">
+              It'll be marked as removed and automatically disappear from this list in 2 days. You can undo this any time before then.
+            </p>
+            <div className="mt-5 flex gap-3">
+              <button
+                onClick={() => setRemoveTarget(null)}
+                className="flex-1 rounded-lg border px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmRemoveInterview}
+                className="flex-1 rounded-lg bg-gray-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-900 transition"
+              >
+                Remove
+              </button>
+            </div>
           </div>
         </div>
       )}

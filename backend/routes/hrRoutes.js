@@ -9,26 +9,34 @@ import { requireAuth, requireHR } from "../middleware/auth.js";
 
 const router = express.Router();
 
-// Logo upload
-const logoDir = path.join(process.cwd(), "uploads", "logos");
-fs.mkdirSync(logoDir, { recursive: true });
+// Cover image + gallery upload — same disk folder, distinguished by field name
+const companyMediaDir = path.join(process.cwd(), "uploads", "company");
+fs.mkdirSync(companyMediaDir, { recursive: true });
 
-const logoStorage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, logoDir),
+const imageFileFilter = (req, file, cb) => {
+  const ok = [".jpg", ".jpeg", ".png", ".webp", ".svg"].includes(
+    path.extname(file.originalname).toLowerCase()
+  );
+  cb(ok ? null : new Error("Only image files are allowed."), ok);
+};
+
+const companyMediaStorage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, companyMediaDir),
   filename: (req, file, cb) =>
-    cb(null, `${Date.now()}${path.extname(file.originalname)}`),
+    cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}${path.extname(file.originalname)}`),
 });
 
-const uploadLogo = multer({
-  storage: logoStorage,
-  limits: { fileSize: 2 * 1024 * 1024 },
-  fileFilter: (req, file, cb) => {
-    const ok = [".jpg", ".jpeg", ".png", ".webp", ".svg"].includes(
-      path.extname(file.originalname).toLowerCase()
-    );
-    cb(ok ? null : new Error("Only image files are allowed."), ok);
-  },
+const uploadCompanyMedia = multer({
+  storage: companyMediaStorage,
+  limits: { fileSize: 4 * 1024 * 1024 },
+  fileFilter: imageFileFilter,
 });
+
+const uploadCompanyFields = [
+  { name: "logo", maxCount: 1 },
+  { name: "coverImage", maxCount: 1 },
+  { name: "gallery", maxCount: 8 },
+];
 
 // ── Dashboard stats ──────────────────────────────────────────────────────────
 router.get("/dashboard", requireAuth, requireHR, async (req, res) => {
@@ -291,6 +299,7 @@ router.post("/jobs", requireAuth, requireHR, async (req, res) => {
       interviewQuestions,
       interviewDurationSeconds,
       questionAnswerSeconds,
+      aboutRole, responsibilities, requirements,
     } = req.body;
     if (!title || !company || !city || !description) {
       return res.status(400).json({ message: "Title, company, city and description are required." });
@@ -303,6 +312,7 @@ router.post("/jobs", requireAuth, requireHR, async (req, res) => {
     const job = await Job.create({
       title, company, city, description, salary, type,
       workMode, experienceLevel, skills, category, applicationDeadline,
+      aboutRole, responsibilities, requirements,
       interviewQuestions: cleanedQuestions,
       interviewDurationSeconds:
         Number.isFinite(Number(interviewDurationSeconds))
@@ -457,7 +467,7 @@ router.get("/company", requireAuth, requireHR, async (req, res) => {
   }
 });
 
-router.post("/company", requireAuth, requireHR, uploadLogo.single("logo"), async (req, res) => {
+router.post("/company", requireAuth, requireHR, uploadCompanyMedia.fields(uploadCompanyFields), async (req, res) => {
   try {
     let existing = await Company.findOne({ hr: req.user.id });
 
@@ -468,12 +478,38 @@ router.post("/company", requireAuth, requireHR, uploadLogo.single("logo"), async
       website: req.body.website,
       location: req.body.location,
       size: req.body.size,
+      foundedYear: req.body.foundedYear,
+      mission: req.body.mission,
+      culture: req.body.culture,
       hr: req.user.id,
     };
 
-    if (req.file) {
-      updates.logo = `/uploads/logos/${req.file.filename}`;
+    // socialLinks arrives as socialLinks[linkedin], socialLinks[website], etc.
+    updates.socialLinks = {
+      linkedin: req.body["socialLinks[linkedin]"] || "",
+      website: req.body["socialLinks[website]"] || "",
+      facebook: req.body["socialLinks[facebook]"] || "",
+      twitter: req.body["socialLinks[twitter]"] || "",
+    };
+
+    if (req.files?.logo?.[0]) {
+      updates.logo = `/uploads/company/${req.files.logo[0].filename}`;
     }
+    if (req.files?.coverImage?.[0]) {
+      updates.coverImage = `/uploads/company/${req.files.coverImage[0].filename}`;
+    }
+
+    // Gallery: keep whichever existing images the client says to retain
+    // (sent as repeated "existingGallery" fields), then append any newly
+    // uploaded ones — so removing an image on the client actually removes
+    // it here too, instead of only ever appending.
+    const keepExisting = req.body.existingGallery
+      ? [].concat(req.body.existingGallery)
+      : [];
+    const newGalleryFiles = (req.files?.gallery || []).map(
+      (f) => `/uploads/company/${f.filename}`
+    );
+    updates.gallery = [...keepExisting, ...newGalleryFiles].slice(0, 8);
 
     if (existing) {
       Object.assign(existing, updates);

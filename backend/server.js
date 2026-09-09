@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import path from "path";
 import connectDB from "./config/db.js";
 import { startRejectedApplicationCleanup } from "./services/rejectedApplicationCleanup.js";
+import { startInterviewRemovalCleanup } from "./services/interviewRemovalCleanup.js";
 
 import authRoutes from "./routes/authRoutes.js";
 import jobRoutes from "./routes/jobRoutes.js";
@@ -21,8 +22,13 @@ dotenv.config();
 // Also try repo-root .env when running from /backend
 dotenv.config({ path: path.resolve(process.cwd(), "../.env") });
 
-connectDB();
-startRejectedApplicationCleanup();
+// Start the rejected-application cleanup job only once MongoDB is actually
+// connected — otherwise its first `Application.find()` call fires before
+// mongoose finishes connecting and times out waiting on the buffered query.
+connectDB().then(() => {
+  startRejectedApplicationCleanup();
+  startInterviewRemovalCleanup();
+});
 
 const app = express();
 
