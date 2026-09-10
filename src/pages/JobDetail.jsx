@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import Navbar from "../components/Navbar";
+import CityAutocomplete from "../components/CityAutocomplete";
 import { getJob } from "../services/jobService";
 import { applyToJob } from "../services/applicationService";
 import { saveJob, unsaveJob, getSavedJobs } from "../services/savedJobService";
@@ -30,6 +31,8 @@ import {
   HiOutlinePaperAirplane,
   HiXMark,
 } from "react-icons/hi2";
+
+const FILE_BASE = (import.meta.env.VITE_API_URL || "http://localhost:5000/api").replace(/\/api$/, "");
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Parse job description
@@ -177,13 +180,15 @@ const EXP_OPTIONS = [
 // Stepper
 // ─────────────────────────────────────────────────────────────────────────────
 
-function StepBar({ current }) {
+function StepBar({ current, maxReached, onStepClick }) {
   return (
     <div className="flex items-center mb-6">
       {APPLY_STEPS.map((s, i) => {
-        const done = current > s.id;
+        const reached = maxReached ?? current;
+        const done = s.id < reached;
         const active = current === s.id;
         const last = i === APPLY_STEPS.length - 1;
+        const clickable = s.id <= reached && s.id !== current && !!onStepClick;
 
         return (
           <div
@@ -191,12 +196,20 @@ function StepBar({ current }) {
             className="flex items-center flex-1 last:flex-none"
           >
             <div className="flex flex-col items-center">
-              <div
+              <button
+                type="button"
+                disabled={!clickable}
+                onClick={() => clickable && onStepClick(s.id)}
+                title={clickable ? `Go to ${s.label}` : undefined}
                 className={`flex h-9 w-9 items-center justify-center rounded-full border-2 text-sm font-bold transition-all duration-300 ${
+                  clickable ? "cursor-pointer hover:scale-110" : "cursor-default"
+                } ${
                   done
                     ? "border-blue-600 bg-blue-600 text-white"
                     : active
                     ? "border-blue-600 bg-white text-blue-600 shadow-md shadow-blue-100"
+                    : clickable
+                    ? "border-blue-300 bg-blue-50 text-blue-500"
                     : "border-gray-200 bg-white text-gray-400"
                 }`}
               >
@@ -205,16 +218,19 @@ function StepBar({ current }) {
                 ) : (
                   s.id
                 )}
-              </div>
+              </button>
 
               <p
                 className={`mt-1 text-[10px] font-semibold text-center hidden sm:block ${
+                  clickable ? "cursor-pointer" : ""
+                } ${
                   active
                     ? "text-blue-600"
-                    : done
+                    : done || clickable
                     ? "text-gray-600"
                     : "text-gray-400"
                 }`}
+                onClick={() => clickable && onStepClick(s.id)}
               >
                 {s.label}
               </p>
@@ -613,6 +629,11 @@ export default function JobDetail() {
 
   const [showApply, setShowApply] = useState(false);
   const [applyStep, setApplyStep] = useState(1);
+  // Furthest step the candidate has reached so far — lets them jump forward
+  // to any step they've already visited (not just step-by-step back), by
+  // clicking its circle in the stepper, without losing that "reached" state
+  // when they navigate backward in between.
+  const [maxStepReached, setMaxStepReached] = useState(1);
   const [applying, setApplying] = useState(false);
 
   const [applyError, setApplyError] = useState("");
@@ -730,6 +751,7 @@ export default function JobDetail() {
 
     setShowApply(true);
     setApplyStep(1);
+    setMaxStepReached(1);
     setStepErrors({});
     setApplyError("");
 
@@ -863,9 +885,20 @@ export default function JobDetail() {
     setStepErrors({});
     setDirection("forward");
 
-    setApplyStep((s) =>
-      Math.min(s + 1, 5)
-    );
+    setApplyStep((s) => {
+      const next = Math.min(s + 1, 5);
+      setMaxStepReached((m) => Math.max(m, next));
+      return next;
+    });
+  }
+
+  // Jump directly to any step already reached — used by clicking a
+  // completed circle in the stepper, or an "Edit" link from the review step.
+  function goToStep(stepId) {
+    setDirection(stepId > applyStep ? "forward" : "back");
+    setStepErrors({});
+    setApplyStep(stepId);
+    setMaxStepReached((m) => Math.max(m, stepId));
   }
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -1052,8 +1085,12 @@ export default function JobDetail() {
 
             {/* Company info */}
             <div className="flex items-start gap-4">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-2xl font-bold text-white">
-                {initial}
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-blue-600 text-2xl font-bold text-white">
+                {job.companyRef?.logo ? (
+                  <img src={`${FILE_BASE}${job.companyRef.logo}`} alt={job.company} className="h-full w-full object-cover" />
+                ) : (
+                  initial
+                )}
               </div>
 
               <div>
@@ -1252,9 +1289,20 @@ export default function JobDetail() {
 
               {tab === "About Company" && (
                 <div>
+                  {job.companyRef?.coverImage && (
+                    <div
+                      className="mb-4 h-32 w-full rounded-xl bg-cover bg-center"
+                      style={{ backgroundImage: `url(${FILE_BASE}${job.companyRef.coverImage})` }}
+                    />
+                  )}
+
                   <div className="flex items-center gap-3 mb-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600 text-lg font-bold text-white">
-                      {initial}
+                    <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl bg-blue-600 text-lg font-bold text-white">
+                      {job.companyRef?.logo ? (
+                        <img src={`${FILE_BASE}${job.companyRef.logo}`} alt={job.company} className="h-full w-full object-cover" />
+                      ) : (
+                        initial
+                      )}
                     </div>
 
                     <div>
@@ -1269,7 +1317,7 @@ export default function JobDetail() {
                   </div>
 
                   <p className="text-sm text-gray-500 leading-6">
-                    No company description available yet.
+                    {job.companyRef?.description || "No company description available yet."}
                   </p>
                 </div>
               )}
@@ -1427,7 +1475,7 @@ export default function JobDetail() {
 
             {/* Step bar */}
             <div className="px-6 pt-5">
-              <StepBar current={applyStep} />
+              <StepBar current={applyStep} maxReached={maxStepReached} onStepClick={goToStep} />
             </div>
 
             {/* Step content */}
@@ -1623,21 +1671,19 @@ export default function JobDetail() {
                     required
                     error={stepErrors.location}
                   >
-                    <AInput
-                      hasError={
-                        !!stepErrors.location
-                      }
-                      placeholder="Lahore, Pakistan"
-                      value={
-                        applyForm.location
-                      }
-                      onChange={(e) =>
-                        setF(
-                          "location",
-                          e.target.value
-                        )
-                      }
-                    />
+                    <div
+                      className={`rounded-xl border transition focus-within:ring-2 ${
+                        stepErrors.location
+                          ? "border-red-300 bg-red-50/30 focus-within:border-red-400 focus-within:ring-red-100"
+                          : "border-gray-200 bg-white focus-within:border-blue-500 focus-within:ring-blue-100"
+                      }`}
+                    >
+                      <CityAutocomplete
+                        value={applyForm.location}
+                        onChange={(v) => setF("location", v)}
+                        placeholder="Lahore, Pakistan"
+                      />
+                    </div>
                   </AField>
 
                   <AField label="LinkedIn Profile">
@@ -2113,15 +2159,7 @@ export default function JobDetail() {
                         </p>
 
                         <button
-                          onClick={() => {
-                            setDirection(
-                              "back"
-                            );
-
-                            setApplyStep(
-                              section.step
-                            );
-                          }}
+                          onClick={() => goToStep(section.step)}
                           className="text-xs font-medium text-blue-600 hover:text-blue-700 transition"
                         >
                           Edit

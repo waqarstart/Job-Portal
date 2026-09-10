@@ -28,9 +28,11 @@ router.get("/", async (req, res) => {
       };
     }
 
-    const jobs = await Job.find(filter).sort({
-      createdAt: -1,
-    });
+    const jobs = await Job.find(filter)
+      .populate("companyRef", "logo coverImage")
+      .sort({
+        createdAt: -1,
+      });
 
     res.json(jobs);
   } catch (err) {
@@ -67,12 +69,36 @@ router.get("/companies/top", async (req, res) => {
       {
         $limit: limit,
       },
+      // Pull in the matching Company doc (case-insensitive name match) so
+      // the frontend can show the real uploaded logo instead of initials.
+      {
+        $lookup: {
+          from: "companies",
+          let: { companyName: "$_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $eq: [
+                    { $toLower: "$name" },
+                    { $toLower: "$$companyName" },
+                  ],
+                },
+              },
+            },
+            { $project: { logo: 1, coverImage: 1 } },
+          ],
+          as: "companyDoc",
+        },
+      },
     ]);
 
     res.json(
       results.map((r) => ({
         company: r._id,
         jobCount: r.jobCount,
+        logo: r.companyDoc?.[0]?.logo || null,
+        coverImage: r.companyDoc?.[0]?.coverImage || null,
       }))
     );
   } catch (err) {
@@ -119,7 +145,7 @@ router.get("/:id", async (req, res) => {
       {
         new: true,
       }
-    );
+    ).populate("companyRef", "logo coverImage description website industry size");
 
     if (!job) {
       return res.status(404).json({

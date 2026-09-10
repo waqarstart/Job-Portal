@@ -50,6 +50,7 @@ function closingTurn(turns = []) {
 export default function InterviewFeedbackPanel({ application }) {
   const [openTranscript, setOpenTranscript] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
 
   if (!application) return null;
 
@@ -61,6 +62,7 @@ export default function InterviewFeedbackPanel({ application }) {
     interviewTranscript,
     interviewTurns,
     interviewAudioUrl,
+    interviewHistory,
     status,
   } = application;
 
@@ -74,7 +76,8 @@ export default function InterviewFeedbackPanel({ application }) {
     !!interviewSummary ||
     !!interviewTranscript ||
     qaTurns.length > 0 ||
-    typeof interviewRating === "number";
+    typeof interviewRating === "number" ||
+    (interviewHistory?.length > 0);
 
   const showPendingHint =
     !interviewStatus &&
@@ -242,6 +245,65 @@ export default function InterviewFeedbackPanel({ application }) {
                     .join("\n\n")
                 : interviewTranscript}
             </pre>
+          )}
+        </div>
+      )}
+
+      {interviewHistory?.length > 0 && (
+        <div className="mt-4 border-t border-gray-100 pt-3">
+          <button
+            type="button"
+            onClick={() => setShowHistory((v) => !v)}
+            className="inline-flex items-center gap-1 text-xs font-semibold text-gray-500 hover:text-gray-700"
+          >
+            {showHistory ? (
+              <HiOutlineChevronUp className="h-3.5 w-3.5" />
+            ) : (
+              <HiOutlineChevronDown className="h-3.5 w-3.5" />
+            )}
+            Previous rounds ({interviewHistory.length})
+          </button>
+
+          {showHistory && (
+            <div className="mt-2 space-y-2">
+              {[...interviewHistory].reverse().map((round, i) => (
+                <div
+                  key={i}
+                  className="rounded-lg border border-gray-100 bg-gray-50 p-3 text-xs"
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-semibold text-gray-800">
+                      Round {interviewHistory.length - i}
+                      {round.interviewDate
+                        ? ` — ${new Date(round.interviewDate).toLocaleDateString(undefined, {
+                            day: "2-digit",
+                            month: "short",
+                            year: "numeric",
+                          })}`
+                        : ""}
+                    </span>
+                    <InterviewStatusBadge status={round.interviewStatus} short />
+                    {typeof round.interviewRating === "number" && (
+                      <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+                        Overall {round.interviewRating}/10
+                      </span>
+                    )}
+                  </div>
+                  {round.interviewCancelReason && (
+                    <p className="mt-1.5 text-gray-600">
+                      <span className="font-medium text-gray-700">Cancel reason: </span>
+                      {round.interviewCancelReason}
+                    </p>
+                  )}
+                  {round.interviewSummary && (
+                    <p className="mt-1.5 text-gray-600">
+                      <span className="font-medium text-gray-700">Summary: </span>
+                      {round.interviewSummary}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
           )}
         </div>
       )}

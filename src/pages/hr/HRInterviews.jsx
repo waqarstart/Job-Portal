@@ -77,6 +77,7 @@ export default function HRInterviews() {
   const [form, setForm] = useState(emptyForm());
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
+  const [newRoundApp, setNewRoundApp] = useState(null); // set when scheduling a fresh round for an app that already has a past interview
 
   const [cancelTarget, setCancelTarget] = useState(null); // the app pending cancel confirmation
   const [cancelReason, setCancelReason] = useState("");
@@ -126,8 +127,14 @@ export default function HRInterviews() {
 
     if (statusFilter === "removed") {
       list = list.filter((i) => Boolean(i.interviewRemovalRequestedAt));
-    } else if (statusFilter !== "all") {
-      list = list.filter((i) => i.interviewStatus === statusFilter);
+    } else {
+      // A removed interview only belongs in the "Removed" tab — hide it
+      // everywhere else (All / Scheduled / Completed / Cancelled), even
+      // though its underlying interviewStatus is unchanged.
+      list = list.filter((i) => !i.interviewRemovalRequestedAt);
+      if (statusFilter !== "all") {
+        list = list.filter((i) => i.interviewStatus === statusFilter);
+      }
     }
 
     if (search.trim()) {
@@ -195,11 +202,24 @@ export default function HRInterviews() {
     setForm(emptyForm());
     setFormError("");
     setSchedulable([]);
+    setNewRoundApp(null);
     setModalDataReady(false);
     setShowScheduleModal(true);
     const apps = await getSchedulableApplicants();
     setSchedulable(apps);
     setModalDataReady(true);
+  }
+
+  // Opens the same modal, but pre-targeted at a candidate who already has
+  // a completed/cancelled interview — picking a new date/time here starts
+  // a fresh round and archives the old one into history (see submitSchedule).
+  function openNewRoundModal(app) {
+    setOpenMenuId(null);
+    setForm({ ...emptyForm(), applicationId: app._id, type: app.interviewType || "Technical Round" });
+    setFormError("");
+    setNewRoundApp(app);
+    setModalDataReady(true);
+    setShowScheduleModal(true);
   }
 
   async function submitSchedule() {
@@ -228,8 +248,10 @@ export default function HRInterviews() {
         interviewType: form.type,
         interviewMode: "AI Interview",
         interviewStatus: "pending",
+        ...(newRoundApp ? { startNewRound: true } : {}),
       });
       setShowScheduleModal(false);
+      setNewRoundApp(null);
       load();
     } catch (err) {
       setFormError(err.response?.data?.message || "Could not schedule interview.");
@@ -366,8 +388,11 @@ export default function HRInterviews() {
                           )}
                           {(isCancelled || isCompleted) && !app.interviewRemovalRequestedAt && (
                             <>
+                              <button onClick={() => openNewRoundModal(app)} className="block w-full text-left px-4 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50">
+                                Schedule New Interview
+                              </button>
                               <button onClick={() => reopenInterview(app)} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
-                                Reopen as Scheduled
+                                Reopen (Same Date)
                               </button>
                               <button onClick={() => { setOpenMenuId(null); setRemoveTarget(app); }} className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50">
                                 Remove
@@ -493,8 +518,10 @@ export default function HRInterviews() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
           <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
             <div className="flex items-center justify-between mb-5">
-              <h3 className="text-lg font-bold text-gray-900">Schedule Interview</h3>
-              <button onClick={() => setShowScheduleModal(false)} className="text-gray-400 hover:text-gray-600">
+              <h3 className="text-lg font-bold text-gray-900">
+                {newRoundApp ? "Schedule New Interview" : "Schedule Interview"}
+              </h3>
+              <button onClick={() => { setShowScheduleModal(false); setNewRoundApp(null); }} className="text-gray-400 hover:text-gray-600">
                 <HiOutlineXMark className="h-5 w-5" />
               </button>
             </div>
@@ -518,23 +545,34 @@ export default function HRInterviews() {
             <div className="space-y-4">
               <div>
                 <label className="text-sm font-medium text-gray-700 mb-1.5 block">Candidate</label>
-                <Dropdown
-                  value={form.applicationId}
-                  onChange={(v) => setForm({ ...form, applicationId: v })}
-                  options={[
-                    { value: "", label: "-- Select candidate --" },
-                    ...schedulable.map((a) => ({
-                      value: a._id,
-                      label: `${a.user?.name} — ${a.job?.title}`,
-                    })),
-                  ]}
-                  fullWidth
-                  buttonClassName="w-full"
-                />
-                {schedulable.length === 0 && (
-                  <p className="mt-1 text-xs text-gray-400">
-                    No candidates available — only applicants with a CV rating above 50 (and no interview scheduled yet) show up here.
-                  </p>
+                {newRoundApp ? (
+                  <div className="rounded-xl border bg-gray-50 px-3 py-2.5 text-sm text-gray-700">
+                    <span className="font-semibold">{newRoundApp.user?.name}</span> — {newRoundApp.job?.title}
+                    <p className="mt-1 text-xs text-gray-400">
+                      Their previous round ({INTERVIEW_STATUS_BADGE[newRoundApp.interviewStatus]?.label || newRoundApp.interviewStatus}) will be saved to history, not deleted.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <Dropdown
+                      value={form.applicationId}
+                      onChange={(v) => setForm({ ...form, applicationId: v })}
+                      options={[
+                        { value: "", label: "-- Select candidate --" },
+                        ...schedulable.map((a) => ({
+                          value: a._id,
+                          label: `${a.user?.name} — ${a.job?.title}`,
+                        })),
+                      ]}
+                      fullWidth
+                      buttonClassName="w-full"
+                    />
+                    {schedulable.length === 0 && (
+                      <p className="mt-1 text-xs text-gray-400">
+                        No candidates available — only applicants with a CV rating above 50 (and no interview scheduled yet) show up here.
+                      </p>
+                    )}
+                  </>
                 )}
               </div>
 
@@ -598,7 +636,7 @@ export default function HRInterviews() {
 
               <div className="flex gap-3 pt-2">
                 <button
-                  onClick={() => setShowScheduleModal(false)}
+                  onClick={() => { setShowScheduleModal(false); setNewRoundApp(null); }}
                   className="flex-1 rounded-lg border py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50"
                 >
                   Cancel
@@ -608,7 +646,7 @@ export default function HRInterviews() {
                   disabled={saving}
                   className="flex-1 rounded-lg bg-blue-600 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
                 >
-                  {saving ? "Scheduling..." : "Schedule Interview"}
+                  {saving ? "Scheduling..." : newRoundApp ? "Schedule New Interview" : "Schedule Interview"}
                 </button>
               </div>
             </div>

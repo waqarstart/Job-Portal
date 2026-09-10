@@ -85,7 +85,10 @@ router.delete("/users/:id", requireAuth, requireAdmin, async (req, res) => {
 // ── Manage Jobs ───────────────────────────────────────────────────────────────
 router.get("/jobs", requireAuth, requireAdmin, async (req, res) => {
   try {
-    const jobs = await Job.find().populate("postedBy", "name email").sort({ createdAt: -1 });
+    const jobs = await Job.find()
+      .populate("postedBy", "name email")
+      .populate("companyRef", "logo coverImage")
+      .sort({ createdAt: -1 });
     res.json(jobs);
   } catch (err) {
     res.status(500).json({ message: err.message });

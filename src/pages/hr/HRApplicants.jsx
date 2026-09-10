@@ -282,6 +282,32 @@ function CvEvalPanel({ application }) {
   );
 }
 
+// ── CV Evaluation / Interview Summary toggle ───────────────────────────────────
+// Only one panel shows at a time — clicking a tab swaps which one is visible.
+function DetailTabs({ activeTab, onChange }) {
+  const tabs = [
+    { key: "cv",        label: "CV Evaluation" },
+    { key: "interview", label: "Interview Summary" },
+  ];
+  return (
+    <div className="mb-3 flex gap-2">
+      {tabs.map((t) => (
+        <button
+          key={t.key}
+          onClick={() => onChange(t.key)}
+          className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+            activeTab === t.key
+              ? "bg-blue-600 text-white shadow-sm"
+              : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
+          }`}
+        >
+          {t.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 // ── Main page ──────────────────────────────────────────────────────────────────
 export default function HRApplicants() {
   const [apps, setApps]       = useState([]);
@@ -290,6 +316,7 @@ export default function HRApplicants() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [jobFilter, setJobFilter]       = useState("all");
   const [expandedId, setExpandedId]     = useState(null);
+  const [detailTab, setDetailTab]       = useState("cv"); // "cv" | "interview" — which panel shows in the expanded row
   const [page, setPage]       = useState(1);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo]     = useState("");
@@ -605,7 +632,7 @@ export default function HRApplicants() {
                     {/* Actions */}
                     <div className="flex items-center justify-end gap-1 px-5 py-3.5">
                       <button
-                        onClick={() => setExpandedId(isExp ? null : app._id)}
+                        onClick={() => { setExpandedId(isExp ? null : app._id); setDetailTab("cv"); }}
                         title="View Details"
                         className={`rounded-lg p-2 transition-all duration-150 hover:scale-110 ${
                           isExp ? "bg-blue-50 text-blue-600" : "text-gray-500 hover:bg-blue-50 hover:text-blue-600"
@@ -637,18 +664,6 @@ export default function HRApplicants() {
                   {isExp && (
                     <div className="mx-4 md:mx-5 mb-4 rounded-xl border border-gray-100 bg-gray-50/60 p-4">
                       <div className="flex flex-wrap items-center gap-2 mb-3">
-                        <span className={`rounded-full border px-3 py-1 text-xs font-semibold capitalize ${STATUS_STYLES[app.status] || "bg-gray-100 text-gray-600"}`}>
-                          {app.status.replace(/_/g, " ")}
-                        </span>
-                        <select
-                          value={app.status}
-                          onChange={(e) => handleStatus(app._id, e.target.value)}
-                          className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs outline-none focus:border-blue-500 text-gray-700"
-                        >
-                          {STATUS_OPTIONS.map((s) => (
-                            <option key={s} value={s}>{s.replace(/_/g, " ")}</option>
-                          ))}
-                        </select>
                         {app.user?.skills?.length > 0 && (
                           <div className="flex flex-wrap gap-1">
                             {app.user.skills.slice(0, 6).map((sk) => (
@@ -657,8 +672,9 @@ export default function HRApplicants() {
                           </div>
                         )}
                       </div>
-                      <CvEvalPanel application={app} />
-                      <InterviewFeedbackPanel application={app} />
+                      <DetailTabs activeTab={detailTab} onChange={setDetailTab} />
+                      {detailTab === "cv" && <CvEvalPanel application={app} />}
+                      {detailTab === "interview" && <InterviewFeedbackPanel application={app} />}
                     </div>
                   )}
                 </div>
@@ -688,7 +704,7 @@ export default function HRApplicants() {
                       </div>
                       <div className="flex items-center gap-0.5 shrink-0">
                         <button
-                          onClick={() => setExpandedId(isExp ? null : app._id)}
+                          onClick={() => { setExpandedId(isExp ? null : app._id); setDetailTab("cv"); }}
                           className={`rounded-lg p-1.5 transition-all duration-150 hover:scale-110 ${
                             isExp ? "bg-blue-50 text-blue-600" : "text-gray-500 hover:bg-blue-50 hover:text-blue-600"
                           }`}
@@ -721,18 +737,6 @@ export default function HRApplicants() {
                 {isExp && (
                   <div className="mx-4 mb-4 rounded-xl border border-gray-100 bg-gray-50/60 p-4">
                     <div className="flex flex-wrap items-center gap-2 mb-3">
-                      <span className={`rounded-full border px-3 py-1 text-xs font-semibold capitalize ${STATUS_STYLES[app.status] || "bg-gray-100 text-gray-600"}`}>
-                        {app.status.replace(/_/g, " ")}
-                      </span>
-                      <select
-                        value={app.status}
-                        onChange={(e) => handleStatus(app._id, e.target.value)}
-                        className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs outline-none focus:border-blue-500 text-gray-700"
-                      >
-                        {STATUS_OPTIONS.map((s) => (
-                          <option key={s} value={s}>{s.replace(/_/g, " ")}</option>
-                        ))}
-                      </select>
                       {app.user?.skills?.length > 0 && (
                         <div className="flex flex-wrap gap-1">
                           {app.user.skills.slice(0, 6).map((sk) => (
@@ -741,8 +745,9 @@ export default function HRApplicants() {
                         </div>
                       )}
                     </div>
-                    <CvEvalPanel application={app} />
-                    <InterviewFeedbackPanel application={app} />
+                    <DetailTabs activeTab={detailTab} onChange={setDetailTab} />
+                    {detailTab === "cv" && <CvEvalPanel application={app} />}
+                    {detailTab === "interview" && <InterviewFeedbackPanel application={app} />}
                   </div>
                 )}
               </div>

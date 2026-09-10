@@ -22,14 +22,17 @@ const FILE_BASE = (import.meta.env.VITE_API_URL || "http://localhost:5000/api").
 
 const navItems = [
   { to: "/dashboard", label: "Dashboard", icon: HiOutlineSquares2X2 },
-  { to: "/dashboard/profile", label: "My Profile", icon: HiOutlineUser },
   { to: "/", label: "Find Jobs", icon: HiOutlineMagnifyingGlass },
-  { to: "/dashboard/applications", label: "Applications", icon: HiOutlineDocumentText },
+  { to: "/dashboard/applications", label: "My Applications", icon: HiOutlineDocumentText },
   { to: "/dashboard/saved-jobs", label: "Saved Jobs", icon: HiOutlineBookmark },
   { to: "/dashboard/interviews", label: "Interviews", icon: HiOutlineVideoCamera },
+  { to: "/dashboard/profile", label: "My Profile", icon: HiOutlineUser },
   { to: "/dashboard/resume", label: "Resume / CV", icon: HiOutlineIdentification },
-  { to: "/dashboard/notifications", label: "Notifications", icon: HiOutlineBell },
+];
+
+const accountItems = [
   { to: "/dashboard/settings", label: "Settings", icon: HiOutlineCog6Tooth },
+  { to: "/dashboard/notifications", label: "Notifications", icon: HiOutlineBell },
 ];
 
 export default function CandidateLayout({ children, title, subtitle, profilePicture: picProp }) {
@@ -87,7 +90,7 @@ export default function CandidateLayout({ children, title, subtitle, profilePict
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50">
-      <aside className="flex h-screen w-64 shrink-0 flex-col overflow-y-auto border-r bg-white">
+      <aside className="flex h-screen w-64 shrink-0 flex-col overflow-hidden border-r bg-white">
         <Link to="/" className="flex items-center gap-2 px-6 py-5">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white">
             <HiOutlineSquares2X2 className="h-5 w-5" />
@@ -116,35 +119,50 @@ export default function CandidateLayout({ children, title, subtitle, profilePict
           </div>
         </div>
 
-        <nav className="mt-4 flex-1 space-y-1 px-3">
-          {navItems.map(({ to, label, icon: Icon }) => {
-            const active = location.pathname === to;
-            return (
-              <Link key={label} to={to}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
-                  active ? "bg-blue-50 text-blue-600" : "text-gray-600 hover:bg-gray-50"
-                }`}>
-                <Icon className="h-5 w-5" />
-                {label}
-              </Link>
-            );
-          })}
-        </nav>
+        <div className="flex-1 overflow-y-auto hide-scrollbar">
+          <nav className="mt-4 space-y-1 px-3">
+            {navItems.map(({ to, label, icon: Icon }) => {
+              const active = location.pathname === to;
+              return (
+                <Link key={label} to={to}
+                  className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
+                    active ? "bg-blue-50 text-blue-600" : "text-gray-600 hover:bg-gray-50"
+                  }`}>
+                  <Icon className="h-5 w-5" />
+                  {label}
+                </Link>
+              );
+            })}
+          </nav>
+
+          <p className="mt-5 px-6 text-[11px] font-bold uppercase tracking-wide text-gray-400">Account</p>
+          <nav className="mt-2 space-y-1 px-3">
+            {accountItems.map(({ to, label, icon: Icon }) => {
+              const active = location.pathname === to;
+              return (
+                <Link key={label} to={to}
+                  className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
+                    active ? "bg-blue-50 text-blue-600" : "text-gray-600 hover:bg-gray-50"
+                  }`}>
+                  <Icon className="h-5 w-5" />
+                  {label}
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
       </aside>
 
       <div className="flex flex-1 flex-col overflow-hidden">
-        <header className="flex shrink-0 items-center justify-between border-b bg-white px-8 py-4">
-          {/* Fix 5: show only page title in bold, no greeting */}
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">{title || "Dashboard"}</h1>
-            {subtitle && <p className="mt-0.5 text-sm text-gray-500">{subtitle}</p>}
+        <header className="flex shrink-0 items-center justify-between gap-4 border-b bg-white px-8 py-4">
+          <div className="min-w-0">
+            <h1 className="text-xl font-bold text-gray-900 truncate">{title || "Dashboard"}</h1>
+            {subtitle && <p className="mt-0.5 text-sm text-gray-500 truncate">{subtitle}</p>}
           </div>
 
-          <div className="flex items-center gap-3">
-            {/* Fix 4: working notification bell */}
+          <div className="flex items-center justify-end gap-3">
             <NotificationMenu notifications={notifications} />
 
-            {/* Fix 3: avatar dropdown with name, language, password, logout */}
             <UserMenu
               user={user}
               logout={logout}

@@ -432,11 +432,53 @@ router.patch("/:id/interview", requireAuth, requireHR, async (req, res) => {
       interviewStatus,
       interviewCancelReason,
       interviewRemovalRequestedAt,
+      startNewRound,
     } = req.body;
 
     const application = await Application.findById(req.params.id);
     if (!application) {
       return res.status(404).json({ message: "Application not found." });
+    }
+
+    // Scheduling a brand-new round for a candidate who already has a
+    // completed/cancelled interview — archive the current round's data
+    // into interviewHistory before overwriting it, so past CV/interview
+    // feedback isn't lost.
+    if (startNewRound && application.interviewDate) {
+      application.interviewHistory.push({
+        interviewDate: application.interviewDate,
+        interviewDurationMinutes: application.interviewDurationMinutes,
+        interviewType: application.interviewType,
+        interviewMode: application.interviewMode,
+        interviewLocationDetail: application.interviewLocationDetail,
+        interviewerCount: application.interviewerCount,
+        interviewStatus: application.interviewStatus,
+        interviewCancelReason: application.interviewCancelReason,
+        interviewSummary: application.interviewSummary,
+        interviewAudioUrl: application.interviewAudioUrl,
+        interviewRating: application.interviewRating,
+        interviewTechnicalRating: application.interviewTechnicalRating,
+        interviewTranscript: application.interviewTranscript,
+        interviewTranscriptRaw: application.interviewTranscriptRaw,
+        interviewTurns: application.interviewTurns,
+        interviewStartedAt: application.interviewStartedAt,
+        interviewCompletedAt: application.interviewCompletedAt,
+      });
+
+      // Clear this round's feedback so the new round starts fresh —
+      // a new AI interview session will populate these again.
+      application.interviewSummary = undefined;
+      application.interviewAudioUrl = undefined;
+      application.interviewRating = undefined;
+      application.interviewTechnicalRating = undefined;
+      application.interviewTranscript = undefined;
+      application.interviewTranscriptRaw = undefined;
+      application.interviewTurns = [];
+      application.interviewStartedAt = undefined;
+      application.interviewCompletedAt = undefined;
+      application.interviewCancelReason = undefined;
+      application.currentQuestionIndex = 0;
+      application.interviewRemovalRequestedAt = null;
     }
 
     if (interviewDate !== undefined) application.interviewDate = interviewDate;
@@ -498,7 +540,10 @@ router.get(
         await Application.find({
           user: req.user.id,
         })
-          .populate("job")
+          .populate({
+            path: "job",
+            populate: { path: "companyRef", select: "logo coverImage" },
+          })
           .sort({
             createdAt: -1,
           });

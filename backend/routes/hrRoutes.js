@@ -416,10 +416,13 @@ router.get("/interviews", requireAuth, requireHR, async (req, res) => {
       .populate("user", "name email")
       .sort({ interviewDate: -1 });
 
-    const total = interviews.length;
-    const scheduled = interviews.filter((i) => i.interviewStatus === "pending").length;
-    const completed = interviews.filter((i) => i.interviewStatus === "completed").length;
-    const cancelled = interviews.filter((i) => i.interviewStatus === "cancelled").length;
+    // Stats exclude interviews that have been removed (soft-deleted) — a
+    // removed interview should only count toward the "Removed" bucket.
+    const active = interviews.filter((i) => !i.interviewRemovalRequestedAt);
+    const total = active.length;
+    const scheduled = active.filter((i) => i.interviewStatus === "pending").length;
+    const completed = active.filter((i) => i.interviewStatus === "completed").length;
+    const cancelled = active.filter((i) => i.interviewStatus === "cancelled").length;
 
     res.json({
       interviews,

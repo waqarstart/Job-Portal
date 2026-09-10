@@ -235,25 +235,38 @@ function Textarea({ hasError, rows = 5, ...props }) {
 }
 
 // ── Step bar ───────────────────────────────────────────────────────────────────
-function StepBar({ current }) {
+function StepBar({ current, maxReached, onStepClick }) {
   return (
     <div className="flex items-center mb-8">
       {STEPS.map((s, i) => {
-        const done   = current > s.id;
+        const reached = maxReached ?? current;
+        const done   = s.id < reached;
         const active = current === s.id;
         const last   = i === STEPS.length - 1;
+        const clickable = s.id <= reached && s.id !== current && !!onStepClick;
         return (
           <div key={s.id} className="flex items-center flex-1 last:flex-none">
             <div className="flex flex-col items-center">
-              <div className={`flex h-10 w-10 items-center justify-center rounded-full border-2 text-sm font-bold transition-all duration-300 ${
-                done   ? "border-blue-600 bg-blue-600 text-white"
-                : active ? "border-blue-600 bg-white text-blue-600 shadow-md shadow-blue-100"
-                : "border-gray-200 bg-white text-gray-400"
-              }`}>
+              <button
+                type="button"
+                disabled={!clickable}
+                onClick={() => clickable && onStepClick(s.id)}
+                title={clickable ? `Go to ${s.label}` : undefined}
+                className={`flex h-10 w-10 items-center justify-center rounded-full border-2 text-sm font-bold transition-all duration-300 ${
+                  clickable ? "cursor-pointer hover:scale-110" : "cursor-default"
+                } ${
+                  done   ? "border-blue-600 bg-blue-600 text-white"
+                  : active ? "border-blue-600 bg-white text-blue-600 shadow-md shadow-blue-100"
+                  : clickable ? "border-blue-300 bg-blue-50 text-blue-500"
+                  : "border-gray-200 bg-white text-gray-400"
+                }`}>
                 {done ? <HiOutlineCheckCircle className="h-5 w-5" /> : s.id}
-              </div>
-              <div className="mt-1.5 text-center hidden sm:block">
-                <p className={`text-xs font-semibold ${active ? "text-blue-600" : done ? "text-gray-700" : "text-gray-400"}`}>{s.label}</p>
+              </button>
+              <div
+                className={`mt-1.5 text-center hidden sm:block ${clickable ? "cursor-pointer" : ""}`}
+                onClick={() => clickable && onStepClick(s.id)}
+              >
+                <p className={`text-xs font-semibold ${active ? "text-blue-600" : done || clickable ? "text-gray-700" : "text-gray-400"}`}>{s.label}</p>
                 <p className="text-[10px] text-gray-400">{s.sub}</p>
               </div>
             </div>
@@ -378,6 +391,9 @@ export default function HRPostJob() {
   const editId = searchParams.get("edit");
 
   const [step, setStep]       = useState(1);
+  // Furthest step reached so far — any step up to here stays clickable in
+  // the stepper, even after navigating back past it.
+  const [maxStepReached, setMaxStepReached] = useState(1);
   const [form, setForm]       = useState(INIT);
   const [errors, setErrors]   = useState({});
   const [posting, setPosting] = useState(false);
@@ -449,7 +465,11 @@ export default function HRPostJob() {
     if (Object.keys(errs).length) { setErrors(errs); return; }
     setErrors({});
     setDirection("forward");
-    setStep((s) => Math.min(s + 1, 4));
+    setStep((s) => {
+      const nextStep = Math.min(s + 1, 4);
+      setMaxStepReached((m) => Math.max(m, nextStep));
+      return nextStep;
+    });
     setApiError("");
   }
 
@@ -460,8 +480,9 @@ export default function HRPostJob() {
   }
 
   function goEdit(s) {
-    setDirection("back");
+    setDirection(s > step ? "forward" : "back");
     setStep(s);
+    setMaxStepReached((m) => Math.max(m, s));
     setErrors({});
   }
 
@@ -522,7 +543,7 @@ export default function HRPostJob() {
         </div>
       ) : (
       <>
-      <StepBar current={step} />
+      <StepBar current={step} maxReached={maxStepReached} onStepClick={goEdit} />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
 

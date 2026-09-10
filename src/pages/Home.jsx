@@ -85,6 +85,8 @@ function avatarColor(name = "") {
   return AVATAR_COLORS[n % AVATAR_COLORS.length];
 }
 
+const FILE_BASE = (import.meta.env.VITE_API_URL || "http://localhost:5000/api").replace(/\/api$/, "");
+
 function timeAgo(date) {
   const days = Math.floor((Date.now() - new Date(date)) / 86400000);
   if (days === 0) return "Today";
@@ -518,8 +520,12 @@ export default function Home() {
                       className="flex flex-col rounded-2xl border border-gray-100 bg-white p-5 shadow-sm hover:shadow-md hover:border-blue-200 transition cursor-pointer"
                     >
                       <div className="flex items-start justify-between mb-3">
-                        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white ${color}`}>
-                          {initial}
+                        <div className={`flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl text-sm font-bold text-white ${color}`}>
+                          {job.companyRef?.logo ? (
+                            <img src={`${FILE_BASE}${job.companyRef.logo}`} alt={job.company} className="h-full w-full object-cover" />
+                          ) : (
+                            initial
+                          )}
                         </div>
                         <button
                           onClick={(e) => handleToggleSave(e, job._id)}
@@ -612,8 +618,12 @@ export default function Home() {
                     onClick={() => navigate(`/companies/${encodeURIComponent(c.company)}`)}
                     className="flex flex-col items-center gap-2 rounded-2xl border border-gray-200 bg-white px-3 py-5 shadow-sm hover:border-blue-300 hover:shadow-md transition text-center"
                   >
-                    <div className={`flex h-11 w-11 items-center justify-center rounded-xl text-base font-bold text-white ${color}`}>
-                      {initial}
+                    <div className={`flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl text-base font-bold text-white ${color}`}>
+                      {c.logo ? (
+                        <img src={`${FILE_BASE}${c.logo}`} alt={c.company} className="h-full w-full object-cover" />
+                      ) : (
+                        initial
+                      )}
                     </div>
                     <p className="text-xs font-semibold text-gray-800 truncate w-full">{c.company}</p>
                     <p className="text-[11px] text-gray-400">{c.jobCount}+ Jobs</p>

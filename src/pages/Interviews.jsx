@@ -183,23 +183,34 @@ export default function Interviews() {
 
   /*
    * ============================================================
+   * EFFECTIVE INTERVIEW STATUS
+   * ============================================================
+   *
+   * `interviewStatus` (this round's pending/completed/cancelled)
+   * is the source of truth whenever HR has set it — it's reset to
+   * "pending" every time HR schedules a fresh interview, even if
+   * the overall application `status` is still "interviewed" from
+   * a previous completed round.
+   *
+   * We only fall back to the old `status === "interviewed"` check
+   * for legacy applications that predate the interviewStatus
+   * field entirely.
+   */
+
+  const effectiveInterviewStatus = (app) => {
+    if (app.interviewStatus) return app.interviewStatus;
+    return app.status === "interviewed" ? "completed" : "pending";
+  };
+
+  /*
+   * ============================================================
    * INTERVIEW AVAILABILITY
    * ============================================================
    *
-   * An interview becomes available automatically when:
-   *
-   * CV rating > 50
-   *
-   * We intentionally don't require interviewDate here.
-   *
-   * This means an old application such as:
-   *
-   * test4
-   * Laravel Developer
-   * CV Rating: 65
-   * status: applied
-   *
-   * will still appear in Interviews.
+   * An interview only becomes available once HR has actually
+   * scheduled it (interviewDate is set). CV rating > 50 makes a
+   * candidate eligible, but eligibility alone should not show an
+   * interview before HR schedules one.
    */
 
   const interviewApplications = useMemo(() => {
@@ -209,6 +220,7 @@ export default function Interviews() {
       return (
         Number.isFinite(rating) &&
         rating > 50 &&
+        Boolean(app.interviewDate) &&
         applicationStatus(app) !== "rejected"
       );
     });
@@ -232,27 +244,21 @@ export default function Interviews() {
     };
 
     interviewApplications.forEach((app) => {
-      /*
-       * If the application is already interviewed, count it
-       * as completed.
-       */
+      const eff = effectiveInterviewStatus(app);
 
-      if (app.status === "interviewed") {
+      if (eff === "completed") {
         result.completed += 1;
         return;
       }
 
-      /*
-       * Existing scheduled interview statuses are respected.
-       */
-
-      if (app.interviewStatus === "cancelled") {
+      if (eff === "cancelled") {
         result.cancelled += 1;
         return;
       }
 
       /*
-       * Everything else with CV > 50 is available/pending.
+       * Everything else (pending / in_progress) with CV > 50 is
+       * available/pending.
        */
 
       result.pending += 1;
@@ -272,23 +278,19 @@ export default function Interviews() {
 
     if (filter === "pending") {
       list = list.filter(
-        (app) =>
-          app.status !== "interviewed" &&
-          app.interviewStatus !== "cancelled"
+        (app) => effectiveInterviewStatus(app) === "pending"
       );
     }
 
     if (filter === "completed") {
       list = list.filter(
-        (app) =>
-          app.status === "interviewed" ||
-          app.interviewStatus === "completed"
+        (app) => effectiveInterviewStatus(app) === "completed"
       );
     }
 
     if (filter === "cancelled") {
       list = list.filter(
-        (app) => app.interviewStatus === "cancelled"
+        (app) => effectiveInterviewStatus(app) === "cancelled"
       );
     }
 
@@ -430,6 +432,13 @@ export default function Interviews() {
       return;
     }
 
+    if (!app.interviewDate) {
+      alert(
+        "HR hasn't scheduled your interview yet. Please check back later."
+      );
+      return;
+    }
+
     console.log(
       "Starting interview for application:",
       app._id
@@ -529,17 +538,7 @@ export default function Interviews() {
           {visible.map((app) => {
             const currentStatus = applicationStatus(app);
 
-            const displayStatusKey =
-              app.interviewStatus === "completed" ||
-              currentStatus === "interviewed"
-                ? "completed"
-                : app.interviewStatus === "cancelled"
-                  ? "cancelled"
-                  : app.interviewStatus === "in_progress"
-                    ? "in_progress"
-                    : app.interviewStatus === "pending"
-                      ? "pending"
-                      : currentStatus;
+            const displayStatusKey = effectiveInterviewStatus(app);
 
             const status =
               STATUS_META[displayStatusKey] ||
@@ -552,12 +551,9 @@ export default function Interviews() {
 
             const rating = Number(app.cvRating);
 
-            const isCompleted =
-              currentStatus === "interviewed" ||
-              app.interviewStatus === "completed";
+            const isCompleted = displayStatusKey === "completed";
 
-            const isCancelled =
-              app.interviewStatus === "cancelled";
+            const isCancelled = displayStatusKey === "cancelled";
 
             return (
               <div
@@ -741,6 +737,46 @@ export default function Interviews() {
                               yet.
                             </p>
                           )}
+
+                        {app.interviewHistory?.length > 0 && (
+                          <div className="pt-2 mt-2 border-t">
+                            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                              Previous rounds ({app.interviewHistory.length})
+                            </p>
+                            <div className="space-y-2">
+                              {[...app.interviewHistory].reverse().map((round, i) => (
+                                <div
+                                  key={i}
+                                  className="rounded-lg border bg-gray-50 p-3 text-xs"
+                                >
+                                  <p className="font-semibold text-gray-700">
+                                    Round {app.interviewHistory.length - i}
+                                    {round.interviewDate
+                                      ? ` — ${new Date(round.interviewDate).toLocaleDateString(undefined, {
+                                          day: "2-digit",
+                                          month: "short",
+                                          year: "numeric",
+                                        })}`
+                                      : ""}
+                                    {round.interviewStatus ? ` (${round.interviewStatus})` : ""}
+                                  </p>
+                                  {typeof round.interviewRating === "number" && (
+                                    <p className="mt-1 text-gray-600">
+                                      <span className="font-medium text-gray-700">Rating: </span>
+                                      {round.interviewRating}/10
+                                    </p>
+                                  )}
+                                  {round.interviewSummary && (
+                                    <p className="mt-1 text-gray-600">
+                                      <span className="font-medium text-gray-700">Feedback: </span>
+                                      {round.interviewSummary}
+                                    </p>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

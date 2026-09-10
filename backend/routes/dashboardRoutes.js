@@ -28,7 +28,12 @@ router.get("/candidate", requireAuth, async (req, res) => {
   try {
     const [user, applications, savedJobs] = await Promise.all([
       User.findById(req.user.id),
-      Application.find({ user: req.user.id }).populate("job").sort({ createdAt: -1 }),
+      Application.find({ user: req.user.id })
+        .populate({
+          path: "job",
+          populate: { path: "companyRef", select: "logo coverImage" },
+        })
+        .sort({ createdAt: -1 }),
       SavedJob.find({ user: req.user.id }).populate("job"),
     ]);
 
@@ -42,6 +47,7 @@ router.get("/candidate", requireAuth, async (req, res) => {
       shortlisted: 0,
       interviewed: 0,
       selected: 0,
+      rejected: 0,
     };
     for (const app of applications) {
       if (pipeline[app.status] !== undefined) pipeline[app.status]++;

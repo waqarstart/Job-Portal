@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Dropdown from "../components/Dropdown";
+import CityAutocomplete from "../components/CityAutocomplete";
 import { searchJobs } from "../services/jobService";
 import { saveJob, unsaveJob, getSavedJobs } from "../services/savedJobService";
 import { useAuth } from "../context/AuthContext";
@@ -11,6 +12,7 @@ import {
   HiOutlineClock, HiOutlineCurrencyDollar, HiOutlineCalendarDays,
   HiOutlineBuildingOffice2, HiOutlineShare, HiOutlineXMark,
   HiOutlineBell, HiOutlineArrowUpTray,
+  HiOutlineArrowPath,
 } from "react-icons/hi2";
 
 const SORT_OPTIONS = [
@@ -18,6 +20,8 @@ const SORT_OPTIONS = [
   { value: "salary-high", label: "Salary: High to Low" },
   { value: "salary-low", label: "Salary: Low to High" },
 ];
+
+const FILE_BASE = (import.meta.env.VITE_API_URL || "http://localhost:5000/api").replace(/\/api$/, "");
 
 function parseSalaryNumber(salary = "") {
   const nums = (salary.match(/\d[\d,]*/g) || []).map((n) => parseInt(n.replace(/,/g, "")));
@@ -97,49 +101,129 @@ function Checkbox({ label, count, checked, onChange }) {
 
 // ── Filter section ──────────────────────────────────────────────────────────
 function FilterSection({ title, options, counts, selected, onToggle }) {
-  const [showAll, setShowAll] = useState(false);
-  const visible = showAll ? options : options.slice(0, 6);
   return (
     <div className="border-b border-gray-100 pb-3 mb-3 last:border-0 last:mb-0 last:pb-0">
       <p className="text-xs font-bold uppercase tracking-wide text-gray-500 mb-2">{title}</p>
-      {visible.map(opt => (
+      {options.map(opt => (
         <Checkbox key={opt} label={opt} count={counts?.[opt]}
           checked={selected.includes(opt)}
           onChange={() => onToggle(opt)} />
       ))}
-      {options.length > 6 && (
-        <button onClick={() => setShowAll(s => !s)}
-          className="mt-1 text-[11px] text-blue-600 hover:underline">
-          {showAll ? "Show Less" : `+${options.length - 6} More`}
-        </button>
-      )}
     </div>
   );
 }
 
 // ── Right panel ─────────────────────────────────────────────────────────────
-async function shareJob(job) {
-  const shareData = {
-    title: job?.title ? `${job.title} — ${job.company}` : "Job listing",
-    text: job?.title ? `Check out this job: ${job.title} at ${job.company}` : "Check out this job",
-    url: `${window.location.origin}/jobs/${job._id}`,
-  };
 
-  try {
-    if (navigator.share) {
-      await navigator.share(shareData);
-      return;
-    }
-  } catch (err) {
-    // user cancelled — fall through to clipboard
-  }
+// Same share dropdown as the JobDetail page (Copy Link / WhatsApp / LinkedIn
+// / Facebook / Instagram) — icon-only trigger button to match the compact
+// bookmark/apply row here.
+function ShareDropdown({ job }) {
+  const [open, setOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
 
-  try {
-    await navigator.clipboard.writeText(shareData.url);
-    alert("Job link copied to clipboard!");
-  } catch (err) {
-    console.error("Failed to copy link:", err);
-  }
+  const jobUrl = `${window.location.origin}/jobs/${job._id}`;
+  const text = encodeURIComponent(`Check out this job: ${job.title}`);
+  const url = encodeURIComponent(jobUrl);
+
+  const options = [
+    {
+      label: "Copy Link",
+      color: "text-gray-700",
+      bg: "hover:bg-gray-50",
+      icon: (
+        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+        </svg>
+      ),
+      action: () => {
+        navigator.clipboard.writeText(jobUrl);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      },
+    },
+    {
+      label: "WhatsApp",
+      color: "text-green-600",
+      bg: "hover:bg-green-50",
+      icon: (
+        <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" />
+          <path d="M12 0C5.373 0 0 5.373 0 12c0 2.124.558 4.118 1.528 5.845L0 24l6.335-1.508A11.942 11.942 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.882a9.875 9.875 0 01-5.031-1.374l-.36-.214-3.733.888.936-3.638-.235-.374A9.87 9.87 0 012.118 12C2.118 6.533 6.533 2.118 12 2.118S21.882 6.533 21.882 12 17.467 21.882 12 21.882z" />
+        </svg>
+      ),
+      action: () => window.open(`https://wa.me/?text=${text}%20${url}`, "_blank"),
+    },
+    {
+      label: "LinkedIn",
+      color: "text-blue-700",
+      bg: "hover:bg-blue-50",
+      icon: (
+        <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+        </svg>
+      ),
+      action: () => window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${url}`, "_blank"),
+    },
+    {
+      label: "Facebook",
+      color: "text-blue-600",
+      bg: "hover:bg-blue-50",
+      icon: (
+        <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+        </svg>
+      ),
+      action: () => window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, "_blank"),
+    },
+    {
+      label: "Instagram",
+      color: "text-pink-600",
+      bg: "hover:bg-pink-50",
+      icon: (
+        <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.28-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919C8.333.014 8.741 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z" />
+        </svg>
+      ),
+      action: () => {
+        navigator.clipboard.writeText(jobUrl);
+        alert("Link copied! Paste it in your Instagram story or bio.");
+      },
+    },
+  ];
+
+  return (
+    <div className="relative shrink-0">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        title="Share this job"
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-200 text-gray-400 hover:bg-gray-50 transition"
+      >
+        <HiOutlineShare className="h-4 w-4" />
+      </button>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 z-20 mt-1 w-48 rounded-xl border border-gray-100 bg-white py-1 shadow-xl">
+            {options.map((opt) => (
+              <button
+                key={opt.label}
+                onClick={() => {
+                  opt.action();
+                  if (opt.label !== "Copy Link") setOpen(false);
+                }}
+                className={`flex w-full items-center gap-3 px-4 py-2.5 text-sm font-medium transition ${opt.color} ${opt.bg}`}
+              >
+                {opt.icon}
+                {opt.label === "Copy Link" && copied ? "Copied!" : opt.label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
 }
 
 function JobPanel({ job, saved, onSave, onApply, onClose }) {
@@ -173,8 +257,12 @@ function JobPanel({ job, saved, onSave, onApply, onClose }) {
       <div className="p-5 border-b border-gray-100 shrink-0">
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-start gap-3 flex-1 min-w-0">
-            <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-lg font-bold text-white ${avatarColor(job.company)}`}>
-              {initial}
+            <div className={`flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl text-lg font-bold text-white ${avatarColor(job.company)}`}>
+              {job.companyRef?.logo ? (
+                <img src={`${FILE_BASE}${job.companyRef.logo}`} alt={job.company} className="h-full w-full object-cover" />
+              ) : (
+                initial
+              )}
             </div>
             <div className="min-w-0">
               <h3 className="text-sm font-bold text-gray-900 leading-tight">{job.title}</h3>
@@ -232,17 +320,12 @@ function JobPanel({ job, saved, onSave, onApply, onClose }) {
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-200 text-gray-400 hover:bg-gray-50 transition">
             {saved ? <HiBookmark className="h-5 w-5 text-blue-600" /> : <HiOutlineBookmark className="h-5 w-5" />}
           </button>
-          <button onClick={() => onApply(job)}
+          <button
+            onClick={() => onApply(job)}
             className="flex-1 rounded-xl bg-blue-600 py-2 text-sm font-bold text-white hover:bg-blue-700 transition">
             Apply Now
           </button>
-          <button
-            onClick={() => shareJob(job)}
-            title="Share this job"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-200 text-gray-400 hover:bg-gray-50 transition"
-          >
-            <HiOutlineShare className="h-4 w-4" />
-          </button>
+          <ShareDropdown job={job} />
         </div>
       </div>
 
@@ -432,12 +515,8 @@ export default function FindJobs() {
                 className="flex-1 bg-transparent text-sm text-gray-800 placeholder-gray-400 outline-none" />
               {titleQ && <button type="button" onClick={() => setTitleQ("")}><HiOutlineXMark className="h-4 w-4 text-gray-400" /></button>}
             </div>
-            <div className="flex flex-1 items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 focus-within:border-blue-400 transition">
-              <HiOutlineMapPin className="h-4 w-4 shrink-0 text-gray-400" />
-              <input type="text" value={cityQ} onChange={e => setCityQ(e.target.value)}
-                placeholder="City e.g. Lahore"
-                className="flex-1 bg-transparent text-sm text-gray-800 placeholder-gray-400 outline-none" />
-              {cityQ && <button type="button" onClick={() => setCityQ("")}><HiOutlineXMark className="h-4 w-4 text-gray-400" /></button>}
+            <div className="flex flex-1 items-center rounded-xl border border-gray-200 bg-white focus-within:border-blue-400 transition">
+              <CityAutocomplete value={cityQ} onChange={setCityQ} placeholder="City e.g. Lahore" />
             </div>
             <button type="submit"
               className="flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition whitespace-nowrap">
@@ -460,11 +539,13 @@ export default function FindJobs() {
             {/* Filter header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 shrink-0">
               <p className="text-sm font-bold text-gray-900">Filters</p>
-              {hasFilters > 0 && (
-                <button onClick={resetFilters} className="text-xs text-blue-600 hover:underline">
-                  Reset All ({hasFilters})
-                </button>
-              )}
+              <button
+                onClick={resetFilters}
+                className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline"
+              >
+                Reset All{hasFilters > 0 ? ` (${hasFilters})` : ""}
+                <HiOutlineArrowPath className="h-3.5 w-3.5" />
+              </button>
             </div>
             {/* Scrollable filter list */}
             <div className="flex-1 overflow-y-auto px-4 py-3 space-y-0">
@@ -517,15 +598,17 @@ export default function FindJobs() {
         <div className="flex-1 min-w-0 flex flex-col sticky top-4" style={{ height: colHeight }}>
           {/* Header */}
           <div className="flex items-center justify-between mb-3 shrink-0">
-            <p className="text-sm text-gray-500">
-              <span className="font-bold text-gray-800">{filtered.length}</span> jobs found
-              {(cityQ || titleQ) && (
-                <span className="text-blue-600">
-                  {titleQ ? ` for "${titleQ}"` : ""}
-                  {cityQ  ? ` in ${cityQ}` : ""}
+            <div>
+              <p className="text-lg font-bold text-gray-900 leading-tight">
+                {cityQ ? `Jobs in ${cityQ}, Pakistan` : "All Jobs"}
+                <span className="ml-2 text-sm font-normal text-gray-400">
+                  {filtered.length} jobs found
                 </span>
+              </p>
+              {titleQ && (
+                <p className="text-xs text-blue-600 mt-0.5">for "{titleQ}"</p>
               )}
-            </p>
+            </div>
             <div className="flex items-center gap-2 shrink-0">
               <span className="text-xs text-gray-400 hidden sm:inline">Sort by:</span>
               <Dropdown value={sortBy} onChange={setSortBy} options={SORT_OPTIONS} />
@@ -579,8 +662,12 @@ export default function FindJobs() {
                   }`}
                 >
                   <div className="flex items-start gap-3">
-                    <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white ${color}`}>
-                      {initial}
+                    <div className={`flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl text-sm font-bold text-white ${color}`}>
+                      {job.companyRef?.logo ? (
+                        <img src={`${FILE_BASE}${job.companyRef.logo}`} alt={job.company} className="h-full w-full object-cover" />
+                      ) : (
+                        initial
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       {/* Title + save */}

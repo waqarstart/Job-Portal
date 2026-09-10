@@ -90,6 +90,44 @@ const applicationSchema = new mongoose.Schema(
     // out of the HR Interviews list) once this is 2+ days old.
     interviewRemovalRequestedAt: Date,
 
+    // Past interview rounds — a snapshot of the round's fields is pushed
+    // here whenever HR schedules a brand-new round for a candidate who
+    // already has a completed/cancelled interview, so old feedback is
+    // preserved instead of being overwritten.
+    interviewHistory: [
+      {
+        interviewDate: Date,
+        interviewDurationMinutes: Number,
+        interviewType: String,
+        interviewMode: String,
+        interviewLocationDetail: String,
+        interviewerCount: Number,
+        interviewStatus: String,
+        interviewCancelReason: String,
+        interviewSummary: String,
+        interviewAudioUrl: String,
+        interviewRating: Number,
+        interviewTechnicalRating: Number,
+        interviewTranscript: String,
+        interviewTranscriptRaw: mongoose.Schema.Types.Mixed,
+        interviewTurns: [
+          {
+            order: { type: Number, default: 0 },
+            question: { type: String, required: true },
+            source: {
+              type: String,
+              enum: ["intro", "hr", "cv", "general", "closing"],
+              default: "hr",
+            },
+            answer: { type: String, default: "" },
+          },
+        ],
+        interviewStartedAt: Date,
+        interviewCompletedAt: Date,
+        archivedAt: { type: Date, default: Date.now },
+      },
+    ],
+
     // LiveAvatar
     liveAvatarSessionId: String,
 
