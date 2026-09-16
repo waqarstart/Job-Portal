@@ -26,15 +26,14 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const user = await login(email, password);
+      await login(email, password);
       if (from) {
         navigate(from);
-      } else if (user.role === "admin") {
-        navigate("/admin/dashboard");
-      } else if (user.role === "hr") {
-        navigate("/hr/dashboard");
       } else {
-        navigate("/dashboard");
+        // Land on the home page first (personalized for whoever just logged
+        // in) rather than dropping straight into a dashboard — they can
+        // navigate to their dashboard from there when they want to.
+        navigate("/");
       }
     } catch (err) {
       setError(err.response?.data?.message || "Login failed.");
@@ -44,10 +43,13 @@ export default function Login() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-10">
-      <div className="w-full max-w-md rounded-2xl border bg-white p-8 shadow-sm">
+    <main
+      className="flex min-h-screen items-center justify-center bg-gray-50 bg-cover bg-center px-4 py-10"
+      style={{ backgroundImage: "url(/images/auth-bg.jpg)" }}
+    >
+      <div className="w-full max-w-md rounded-2xl border bg-white/95 backdrop-blur-sm p-8 shadow-xl">
         <Link to="/" className="flex items-center justify-center gap-2 mb-6">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 font-bold text-white">T</div>
+          <img src="/images/tekky-icon.png" alt="Tekky Job" className="h-8 w-8 object-contain" />
           <span className="text-lg font-bold text-gray-900">Tekky Job</span>
         </Link>
 

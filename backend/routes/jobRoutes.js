@@ -1,9 +1,32 @@
 import express from "express";
 import Job from "../models/Job.js";
 import Company from "../models/Company.js";
+import User from "../models/User.js";
+import Application from "../models/Application.js";
 import { requireAuth, requireAdmin } from "../middleware/auth.js";
 
 const router = express.Router();
+
+// Public: homepage hero stats (job seekers / companies / active jobs posted)
+router.get("/stats/public", async (req, res) => {
+  try {
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+
+    const [jobSeekers, companies, jobsPosted, jobsThisMonth, applications] = await Promise.all([
+      User.countDocuments({ role: "user" }),
+      Company.countDocuments(),
+      Job.countDocuments({ status: "active" }),
+      Job.countDocuments({ status: "active", createdAt: { $gte: startOfMonth } }),
+      Application.countDocuments(),
+    ]);
+
+    res.json({ jobSeekers, companies, jobsPosted, jobsThisMonth, applications });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 
 // Public: list / search jobs
 router.get("/", async (req, res) => {

@@ -92,9 +92,7 @@ export default function CandidateLayout({ children, title, subtitle, profilePict
     <div className="flex h-screen overflow-hidden bg-gray-50">
       <aside className="flex h-screen w-64 shrink-0 flex-col overflow-hidden border-r bg-white">
         <Link to="/" className="flex items-center gap-2 px-6 py-5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white">
-            <HiOutlineSquares2X2 className="h-5 w-5" />
-          </div>
+          <img src="/images/tekky-icon.png" alt="Tekky Job" className="h-8 w-8 object-contain" />
           <span className="text-lg font-bold text-blue-600">Tekky Job</span>
         </Link>
 

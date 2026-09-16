@@ -7,6 +7,68 @@ body {
   font-family: system-ui, "Segoe UI", Roboto, sans-serif;
 }
 
+/* Gentle continuous bob for the floating hero stat cards — staggered via
+   the .float-delay-* helper classes so cards don't move in lockstep. */
+@keyframes gentle-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-8px); }
+}
+.animate-float {
+  animation: gentle-float 4s ease-in-out infinite;
+}
+.float-delay-1 { animation-delay: 0.5s; }
+.float-delay-2 { animation-delay: 1s; }
+
+/* Nav-link underline that grows outward from the center on hover (or
+   stays visible for the active page) — used in the site Navbar. */
+.nav-underline {
+  position: relative;
+  padding-bottom: 4px;
+}
+.nav-underline::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 0.3s ease;
+}
+.nav-underline:hover::after,
+.nav-underline.nav-underline-active::after {
+  transform: scaleX(1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav-underline::after {
+    transition: none;
+  }
+}
+/* Scroll-reveal — an element starts faded/offset and settles into place
+   once the .in-view class is toggled on by IntersectionObserver (see the
+   useReveal hook). prefers-reduced-motion users see content immediately. */
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+.reveal.in-view {
+  opacity: 1;
+  transform: translateY(0);
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .animate-float {
+    animation: none;
+  }
+}
+
 /* Always-visible, styled scrollbars — everywhere something scrolls
    (page, modals, horizontally-scrolling tables, etc.), not just on hover. */
 * {

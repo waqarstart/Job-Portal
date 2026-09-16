@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { HiOutlineMapPin } from "react-icons/hi2";
 
 // Major Pakistani cities shown as quick suggestions — the field still
@@ -12,8 +13,15 @@ const MAJOR_CITIES = [
 // A text input that also offers a dropdown of major cities — the person
 // can type freely (any case) or pick a suggestion. Matching against typed
 // text is always case-insensitive.
+//
+// The suggestion list is rendered into a portal (document.body) with
+// `position: fixed` coordinates measured from the input, exactly like the
+// Dropdown component — so it always floats on top instead of being clipped
+// by an ancestor with `overflow-hidden` (e.g. the hero section).
 export default function CityAutocomplete({ value, onChange, placeholder = "City, province or remote", className = "" }) {
   const [open, setOpen] = useState(false);
+  const [rect, setRect] = useState(null);
+  const wrapRef = useRef(null);
 
   const suggestions = useMemo(() => {
     const q = value.trim().toLowerCase();
@@ -21,8 +29,24 @@ export default function CityAutocomplete({ value, onChange, placeholder = "City,
     return MAJOR_CITIES.filter((c) => c.toLowerCase().includes(q));
   }, [value]);
 
+  useLayoutEffect(() => {
+    if (!open) return;
+
+    function measure() {
+      if (wrapRef.current) setRect(wrapRef.current.getBoundingClientRect());
+    }
+    measure();
+
+    window.addEventListener("scroll", measure, true);
+    window.addEventListener("resize", measure);
+    return () => {
+      window.removeEventListener("scroll", measure, true);
+      window.removeEventListener("resize", measure);
+    };
+  }, [open]);
+
   return (
-    <div className={`relative flex-1 min-w-0 ${className}`}>
+    <div ref={wrapRef} className={`relative flex-1 min-w-0 ${className}`}>
       <div className="flex items-center gap-2 px-4 py-2.5">
         <HiOutlineMapPin className="h-5 w-5 shrink-0 text-gray-400" />
         <input
@@ -35,10 +59,13 @@ export default function CityAutocomplete({ value, onChange, placeholder = "City,
         />
       </div>
 
-      {open && (
+      {open && rect && createPortal(
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 right-0 top-full z-50 mt-2 max-h-64 overflow-y-auto rounded-xl border border-gray-100 bg-white py-1 shadow-xl">
+          <div className="fixed inset-0 z-[100]" onClick={() => setOpen(false)} />
+          <div
+            className="fixed z-[101] max-h-64 overflow-y-auto overflow-x-hidden rounded-xl border border-gray-100 bg-white py-1 shadow-xl"
+            style={{ top: rect.bottom + 8, left: rect.left, width: rect.width, minWidth: "12rem" }}
+          >
             {suggestions.length === 0 ? (
               <p className="px-4 py-2.5 text-sm text-gray-400">
                 No matching city — you can still search "{value}"
@@ -57,7 +84,8 @@ export default function CityAutocomplete({ value, onChange, placeholder = "City,
               ))
             )}
           </div>
-        </>
+        </>,
+        document.body
       )}
     </div>
   );

@@ -38,7 +38,7 @@ export default function UserMenu({ user, logout, profilePicture, settingsPath })
       {/* Avatar button */}
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-2 rounded-full border bg-gray-50 py-1 pl-1 pr-2 hover:bg-gray-100 transition"
+        className="flex items-center gap-2 rounded-full border bg-gray-50 py-1 pl-1 pr-2 transition-all duration-200 hover:scale-105 hover:bg-gray-100 hover:shadow-sm"
       >
         {profilePicture ? (
           <img
@@ -58,8 +58,11 @@ export default function UserMenu({ user, logout, profilePicture, settingsPath })
       </button>
 
       {/* Dropdown */}
-      {open && (
-        <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-2xl border bg-white shadow-xl">
+      <div
+        className={`absolute right-0 top-full z-50 mt-2 w-56 origin-top-right rounded-2xl border bg-white shadow-xl transition-all duration-200 ease-out ${
+          open ? "visible scale-100 opacity-100" : "invisible scale-95 opacity-0 pointer-events-none"
+        }`}
+      >
           {/* User info */}
           <div className="flex items-center gap-3 border-b p-4">
             {profilePicture ? (
@@ -81,7 +84,7 @@ export default function UserMenu({ user, logout, profilePicture, settingsPath })
 
           <div className="p-2">
             {/* Language selector */}
-            <div className="flex items-center gap-2 rounded-lg px-3 py-2.5">
+            <div className="flex items-center gap-2 rounded-lg pl-3 pr-3 py-2.5 transition-[background-color,padding-left] duration-200 ease hover:bg-blue-50 hover:pl-4 hover:text-blue-600">
               <HiOutlineLanguage className="h-4 w-4 shrink-0 text-gray-400" />
               <span className="text-xs text-gray-500 mr-auto">Language</span>
               <select
@@ -99,7 +102,7 @@ export default function UserMenu({ user, logout, profilePicture, settingsPath })
             <Link
               to={settingsPath || "/dashboard/settings"}
               onClick={() => setOpen(false)}
-              className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
+              className="flex items-center gap-2 rounded-lg pl-3 pr-3 py-2.5 text-sm text-gray-700 transition-[background-color,padding-left] duration-200 ease hover:bg-blue-50 hover:pl-4 hover:text-blue-600"
             >
               <HiOutlineLockClosed className="h-4 w-4 text-gray-400" />
               Change Password
@@ -110,14 +113,13 @@ export default function UserMenu({ user, logout, profilePicture, settingsPath })
             {/* Logout */}
             <button
               onClick={() => { setOpen(false); logout(); }}
-              className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-red-600 hover:bg-red-50"
+              className="flex w-full items-center gap-2 rounded-lg pl-3 pr-3 py-2.5 text-sm text-red-600 transition-[background-color,padding-left] duration-200 ease hover:bg-red-50 hover:pl-4"
             >
               <HiOutlineArrowRightOnRectangle className="h-4 w-4" />
               Logout
             </button>
           </div>
         </div>
-      )}
     </div>
   );
 }
