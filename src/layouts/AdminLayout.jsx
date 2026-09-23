@@ -1,0 +1,134 @@
+import { useEffect, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
+import {
+  HiOutlineSquares2X2,
+  HiOutlineUsers,
+  HiOutlineBriefcase,
+  HiOutlineCheckBadge,
+  HiOutlineChartBar,
+  HiOutlineDocumentText,
+  HiOutlineUserGroup,
+  HiOutlineBell,
+  HiOutlineCog6Tooth,
+} from "react-icons/hi2";
+import { useAuth } from "../context/AuthContext";
+import UserMenu from "../components/UserMenu";
+import NotificationMenu from "../components/NotificationMenu";
+import { getAdminDashboard } from "../services/adminService";
+import { getCachedAdminNotifications, setCachedAdminNotifications } from "../utils/profileCache";
+
+const navItems = [
+  { to: "/admin/dashboard", label: "Dashboard", icon: HiOutlineSquares2X2 },
+  { to: "/admin/users", label: "Manage Users", icon: HiOutlineUsers },
+  { to: "/admin/jobs", label: "Manage Jobs", icon: HiOutlineBriefcase },
+  { to: "/admin/approve-jobs", label: "Approve Jobs", icon: HiOutlineCheckBadge },
+  { to: "/admin/analytics", label: "Analytics", icon: HiOutlineChartBar },
+  { to: "/admin/applications", label: "Applications", icon: HiOutlineDocumentText },
+  { to: "/admin/hr-management", label: "HR Management", icon: HiOutlineUserGroup },
+];
+
+const accountItems = [
+  { to: "/admin/settings", label: "Settings", icon: HiOutlineCog6Tooth },
+  { to: "/admin/notifications", label: "Notifications", icon: HiOutlineBell },
+];
+
+export default function AdminLayout({ children, title }) {
+  const { user, logout } = useAuth();
+  const location = useLocation();
+  const [notifications, setNotifications] = useState(getCachedAdminNotifications() || []);
+
+  const initials = (user?.name || "?")
+    .split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
+
+  useEffect(() => {
+    getAdminDashboard()
+      .then((data) => {
+        const notifs = [
+          ...data.recentUsers.slice(0, 3).map((u) => ({
+            message: `New ${u.role} registered: ${u.name}`,
+            time: new Date(u.createdAt).toLocaleDateString(),
+            icon: "👤",
+          })),
+          ...data.recentJobs.slice(0, 2).map((j) => ({
+            message: `New job posted: ${j.title}`,
+            time: new Date(j.createdAt).toLocaleDateString(),
+            icon: "💼",
+          })),
+        ];
+        setNotifications(notifs);
+        setCachedAdminNotifications(notifs);
+      })
+      .catch(() => {});
+  }, []);
+
+  return (
+    <div className="flex h-screen overflow-hidden bg-gray-50">
+      <aside className="flex h-screen w-64 shrink-0 flex-col overflow-y-auto border-r bg-white">
+        <Link to="/" className="flex items-center gap-2 px-6 py-5">
+          <img src="/images/tekky-icon.png" alt="Tekky Job" className="h-8 w-8 object-contain" />
+          <span className="text-lg font-bold text-blue-600">Tekky Job</span>
+        </Link>
+
+        <div className="mx-4 flex items-center gap-3 rounded-xl bg-gray-50 p-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm font-semibold text-white">
+            {initials}
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-gray-800 break-words">{user?.name}</p>
+            <p className="text-xs text-gray-500">System Admin</p>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto hide-scrollbar">
+          <nav className="mt-4 space-y-1 px-3">
+            {navItems.map(({ to, label, icon: Icon }) => {
+              const active = location.pathname === to;
+              return (
+                <Link key={label} to={to}
+                  className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
+                    active ? "bg-blue-50 text-blue-600" : "text-gray-600 hover:bg-gray-50"
+                  }`}>
+                  <Icon className="h-5 w-5" />
+                  {label}
+                </Link>
+              );
+            })}
+          </nav>
+
+          <p className="mt-5 px-6 text-[11px] font-bold uppercase tracking-wide text-gray-400">Account</p>
+          <nav className="mt-2 space-y-1 px-3">
+            {accountItems.map(({ to, label, icon: Icon }) => {
+              const active = location.pathname === to;
+              return (
+                <Link key={label} to={to}
+                  className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
+                    active ? "bg-blue-50 text-blue-600" : "text-gray-600 hover:bg-gray-50"
+                  }`}>
+                  <Icon className="h-5 w-5" />
+                  {label}
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
+      </aside>
+
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <header className="flex shrink-0 items-center justify-between border-b bg-white px-8 py-4">
+          <h1 className="text-xl font-bold text-gray-900">{title || "Admin Dashboard"}</h1>
+
+          <div className="flex items-center gap-3">
+            <NotificationMenu notifications={notifications} />
+            <UserMenu
+              user={user}
+              logout={logout}
+              settingsPath="/admin/settings"
+            />
+          </div>
+        </header>
+
+        <main className="flex-1 overflow-y-auto p-8 hide-scrollbar">{children}</main>
+      </div>
+    </div>
+  );
+}
