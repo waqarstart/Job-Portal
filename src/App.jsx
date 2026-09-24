@@ -23,7 +23,7 @@
 //         </div>
 //         <button
 //           type="button"
-//           className="counter"
+//           className="counter transition-all duration-200 hover:opacity-75"
 //           onClick={() => setCount((count) => count + 1)}
 //         >
 //           Count is {count}
@@ -138,7 +138,22 @@
 // export default App;
 
 import AppRoutes from "./routes/AppRoutes";
+import ProfileCompletionReminderModal from "./components/ProfileCompletionReminderModal";
+import { useAuth } from "./context/AuthContext";
 
 export default function App() {
-  return <AppRoutes />;
+  const { profileReminder, dismissProfileReminder } = useAuth();
+
+  return (
+    <>
+      <AppRoutes />
+      {profileReminder && (
+        <ProfileCompletionReminderModal
+          percent={profileReminder.percent}
+          checklist={profileReminder.checklist}
+          onClose={dismissProfileReminder}
+        />
+      )}
+    </>
+  );
 }

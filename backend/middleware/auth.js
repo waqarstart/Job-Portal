@@ -23,3 +23,10 @@ export function requireAdmin(req, res, next) {
   }
   next();
 }
+
+export function requireHR(req, res, next) {
+  if (!["admin", "hr"].includes(req.user?.role)) {
+    return res.status(403).json({ message: "HR or Admin access required." });
+  }
+  next();
+}

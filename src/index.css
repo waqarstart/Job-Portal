@@ -6,3 +6,156 @@ body {
   margin: 0;
   font-family: system-ui, "Segoe UI", Roboto, sans-serif;
 }
+
+/* Gentle continuous bob for the floating hero stat cards — staggered via
+   the .float-delay-* helper classes so cards don't move in lockstep. */
+@keyframes gentle-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-8px); }
+}
+.animate-float {
+  animation: gentle-float 4s ease-in-out infinite;
+}
+.float-delay-1 { animation-delay: 0.5s; }
+.float-delay-2 { animation-delay: 1s; }
+
+/* Nav-link underline that grows outward from the center on hover (or
+   stays visible for the active page) — used in the site Navbar. */
+.nav-underline {
+  position: relative;
+  padding-bottom: 4px;
+}
+.nav-underline::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 0.3s ease;
+}
+.nav-underline:hover::after,
+.nav-underline.nav-underline-active::after {
+  transform: scaleX(1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav-underline::after {
+    transition: none;
+  }
+}
+/* Scroll-reveal — an element starts faded/offset and settles into place
+   once the .in-view class is toggled on by IntersectionObserver (see the
+   useReveal hook). prefers-reduced-motion users see content immediately. */
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+.reveal.in-view {
+  opacity: 1;
+  transform: translateY(0);
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .animate-float {
+    animation: none;
+  }
+}
+
+/* Always-visible, styled scrollbars — everywhere something scrolls
+   (page, modals, horizontally-scrolling tables, etc.), not just on hover. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent; /* thumb / track — Firefox */
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1; /* slate-300 */
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #94a3b8; /* slate-400 */
+}
+
+/* Hide the little up/down (or left/right) arrow buttons some browsers draw
+   at the ends of a classic scrollbar — we only want the draggable thumb.
+   Some browsers need the directional/single-button variants targeted
+   explicitly, not just the bare ::-webkit-scrollbar-button selector. */
+::-webkit-scrollbar-button,
+::-webkit-scrollbar-button:single-button,
+::-webkit-scrollbar-button:vertical:decrement,
+::-webkit-scrollbar-button:vertical:increment,
+::-webkit-scrollbar-button:horizontal:decrement,
+::-webkit-scrollbar-button:horizontal:increment,
+::-webkit-scrollbar-button:start,
+::-webkit-scrollbar-button:end {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* Fully invisible scrollbar (still scrollable) — used on containers where
+   even a styled thumb was rendering oddly (e.g. a barely-overflowing
+   dashboard main panel). Mouse wheel / trackpad / keyboard scrolling all
+   keep working; there's just nothing drawn for it. */
+.hide-scrollbar {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* old Edge */
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none; /* Chrome, Edge, Safari */
+  width: 0;
+  height: 0;
+}
+
+/* Bottom-right "Done" toast (ToastContext) — slides/fades in smoothly, and
+   its progress bar shrinks from full width to 0 over the toast's lifetime
+   so the user can see how long they have before it auto-dismisses. */
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(20px) scale(0.96); }
+  60%  { opacity: 1; }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.animate-toast-in {
+  animation: toast-in 0.55s cubic-bezier(.22,1,.36,1) both;
+}
+@keyframes toast-out {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to   { opacity: 0; transform: translateY(10px) scale(0.97); }
+}
+.animate-toast-out {
+  animation: toast-out 0.32s cubic-bezier(.4,0,1,1) both;
+}
+@keyframes toast-progress {
+  from { width: 100%; }
+  to   { width: 0%; }
+}
+.animate-toast-progress {
+  animation-name: toast-progress;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-toast-in { animation: none; }
+  .animate-toast-out { animation: none; }
+  .animate-toast-progress { animation: none; width: 0%; }
+}
