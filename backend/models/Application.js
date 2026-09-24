@@ -2,23 +2,168 @@ import mongoose from "mongoose";
 
 const applicationSchema = new mongoose.Schema(
   {
-    job: { type: mongoose.Schema.Types.ObjectId, ref: "Job", required: true },
-    user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-    cvUrl: { type: String, required: true },
+    job: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Job",
+      required: true,
+    },
+
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+
+    cvUrl: {
+      type: String,
+      required: true,
+    },
+
     cvOriginalName: String,
 
-    // Filled in later by the HeyGen webhook once the interview ends
+    // AI CV evaluation
+    cvRating: Number,
+    cvMatchSummary: String,
+    cvMatchedSkills: [String],
+    cvMissingSkills: [String],
+
+    cvEvaluationStatus: {
+      type: String,
+      enum: ["pending", "completed", "failed"],
+      default: "pending",
+    },
+
+    // Stored CV text for interview question generation (truncated)
+    cvExtractedText: String,
+
+    // Ordered interview question queue for this candidate
+    interviewQuestions: [
+      {
+        text: { type: String, required: true },
+        source: {
+          type: String,
+          enum: ["hr", "cv", "general"],
+          default: "hr",
+        },
+        order: { type: Number, default: 0 },
+      },
+    ],
+    currentQuestionIndex: { type: Number, default: 0 },
+
+    // Interview evaluation
     interviewSummary: String,
     interviewAudioUrl: String,
-    interviewRating: Number, // e.g. 1-10, whatever scale HeyGen/your scoring gives back
+    interviewRating: Number,
+    interviewTechnicalRating: Number,
+    interviewTranscript: String,
+    interviewTranscriptRaw: mongoose.Schema.Types.Mixed,
+    // Structured Q&A for HR display
+    interviewTurns: [
+      {
+        order: { type: Number, default: 0 },
+        question: { type: String, required: true },
+        source: {
+          type: String,
+          enum: ["intro", "hr", "cv", "general", "closing"],
+          default: "hr",
+        },
+        answer: { type: String, default: "" },
+      },
+    ],
+    interviewStartedAt: Date,
+    interviewCompletedAt: Date,
 
+    // Interview scheduling (set by HR)
+    interviewDate: Date,
+    interviewDurationMinutes: Number,
+    interviewType: String, // e.g. "Technical Round", "Technical + HR Round"
+    interviewMode: { type: String, default: "Online" }, // "Online" | "On-site"
+    interviewLocationDetail: String, // e.g. "Google Meet" or "Office - Lahore"
+    interviewerCount: { type: Number, default: 1 },
+    interviewStatus: {
+      type: String,
+      enum: ["pending", "in_progress", "completed", "cancelled"],
+    },
+    interviewCancelReason: String,
+    // Set when HR clicks "Remove" on a cancelled/completed interview — the
+    // cleanup job clears the interview's scheduling fields (making it drop
+    // out of the HR Interviews list) once this is 2+ days old.
+    interviewRemovalRequestedAt: Date,
+
+    // Past interview rounds — a snapshot of the round's fields is pushed
+    // here whenever HR schedules a brand-new round for a candidate who
+    // already has a completed/cancelled interview, so old feedback is
+    // preserved instead of being overwritten.
+    interviewHistory: [
+      {
+        interviewDate: Date,
+        interviewDurationMinutes: Number,
+        interviewType: String,
+        interviewMode: String,
+        interviewLocationDetail: String,
+        interviewerCount: Number,
+        interviewStatus: String,
+        interviewCancelReason: String,
+        interviewSummary: String,
+        interviewAudioUrl: String,
+        interviewRating: Number,
+        interviewTechnicalRating: Number,
+        interviewTranscript: String,
+        interviewTranscriptRaw: mongoose.Schema.Types.Mixed,
+        interviewTurns: [
+          {
+            order: { type: Number, default: 0 },
+            question: { type: String, required: true },
+            source: {
+              type: String,
+              enum: ["intro", "hr", "cv", "general", "closing"],
+              default: "hr",
+            },
+            answer: { type: String, default: "" },
+          },
+        ],
+        interviewStartedAt: Date,
+        interviewCompletedAt: Date,
+        archivedAt: { type: Date, default: Date.now },
+      },
+    ],
+
+    // LiveAvatar
+    liveAvatarSessionId: String,
+
+    // Application status
     status: {
       type: String,
-      enum: ["applied", "interviewed", "rejected", "hired"],
+      enum: [
+        "applied",
+        "under_review",
+        "shortlisted",
+        "interviewed",
+        "offered",
+        "selected",
+        "hired",
+        "rejected",
+      ],
       default: "applied",
     },
+
+    // When the application was marked rejected — used by the cleanup job
+    // that auto-deletes rejected applications (and their CV) after 10 days
+    rejectedAt: { type: Date },
+
+    // Where the candidate applied from (used for HR analytics)
+    source: {
+      type: String,
+      enum: ["Company Website", "LinkedIn", "Indeed", "Referral", "Other"],
+      default: "Company Website",
+    },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+  }
 );
 
-export default mongoose.model("Application", applicationSchema);
+export default mongoose.model(
+  "Application",
+  applicationSchema
+);

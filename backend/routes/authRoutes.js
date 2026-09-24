@@ -2,10 +2,16 @@ import express from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
+import { OAuth2Client } from "google-auth-library";
 import User from "../models/User.js";
 import { sendPasswordResetEmail } from "../utils/mailer.js";
+import { authLimiter, passwordResetLimiter } from "../middleware/rateLimit.js";
 
 const router = express.Router();
+
+const googleClient = process.env.GOOGLE_CLIENT_ID
+  ? new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
+  : null;
 
 function makeToken(user) {
   return jwt.sign(
@@ -19,7 +25,7 @@ function publicUser(user) {
   return { id: user._id, name: user.name, email: user.email, role: user.role };
 }
 
-router.post("/register", async (req, res) => {
+router.post("/register", authLimiter, async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
@@ -42,13 +48,19 @@ router.post("/register", async (req, res) => {
   }
 });
 
-router.post("/login", async (req, res) => {
+router.post("/login", authLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
 
     const user = await User.findOne({ email: email?.toLowerCase() });
     if (!user) {
       return res.status(400).json({ message: "Invalid email or password." });
+    }
+
+    if (!user.password) {
+      return res.status(400).json({
+        message: "This account signs in with Google. Please use \"Continue with Google\".",
+      });
     }
 
     const match = await bcrypt.compare(password, user.password);
@@ -63,6 +75,62 @@ router.post("/login", async (req, res) => {
   }
 });
 
+/**
+ * Google Sign-In: verify the ID token from Google Identity Services,
+ * then find or create a matching account and issue our own JWT — same
+ * response shape as /login and /register so the frontend can treat it
+ * identically.
+ */
+router.post("/google", async (req, res) => {
+  try {
+    if (!googleClient) {
+      return res.status(500).json({ message: "Google sign-in is not configured on the server." });
+    }
+
+    const { credential } = req.body;
+    if (!credential) {
+      return res.status(400).json({ message: "Missing Google credential." });
+    }
+
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    const payload = ticket.getPayload();
+
+    if (!payload?.email) {
+      return res.status(400).json({ message: "Google account has no email." });
+    }
+
+    let user = await User.findOne({
+      $or: [{ googleId: payload.sub }, { email: payload.email.toLowerCase() }],
+    });
+
+    if (user) {
+      // Link Google to an existing local account on first Google sign-in
+      if (!user.googleId) {
+        user.googleId = payload.sub;
+        user.authProvider = user.authProvider === "local" && user.password ? user.authProvider : "google";
+        if (!user.profilePicture && payload.picture) user.profilePicture = payload.picture;
+        await user.save();
+      }
+    } else {
+      user = await User.create({
+        name: payload.name || payload.email.split("@")[0],
+        email: payload.email.toLowerCase(),
+        googleId: payload.sub,
+        authProvider: "google",
+        profilePicture: payload.picture || undefined,
+      });
+    }
+
+    const token = makeToken(user);
+    res.json({ token, user: publicUser(user) });
+  } catch (err) {
+    res.status(400).json({ message: "Google sign-in failed. " + err.message });
+  }
+});
+
 export default router;
 
 /**
@@ -70,7 +138,7 @@ export default router;
  * Always responds the same way whether or not the email exists —
  * prevents someone probing which emails are registered.
  */
-router.post("/forgot-password", async (req, res) => {
+router.post("/forgot-password", passwordResetLimiter, async (req, res) => {
   try {
     const { email } = req.body;
     const user = await User.findOne({ email: email?.toLowerCase() });
@@ -94,7 +162,7 @@ router.post("/forgot-password", async (req, res) => {
  * Reset password: verify the token (and that it hasn't expired), set the
  * new password, and clear the token so it can't be reused.
  */
-router.post("/reset-password/:token", async (req, res) => {
+router.post("/reset-password/:token", passwordResetLimiter, async (req, res) => {
   try {
     const { password } = req.body;
 
