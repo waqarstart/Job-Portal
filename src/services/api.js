@@ -28,8 +28,27 @@ api.interceptors.response.use(
     if (response.config?.__tracksLoading) stopLoading();
     return response;
   },
-  (error) => {
+  async (error) => {
     if (error.config?.__tracksLoading) stopLoading();
+
+    const original = error.config;
+    const isAuthCall = original?.url?.startsWith("/auth/");
+    const refreshToken = localStorage.getItem("refreshToken");
+
+    if (error.response?.status === 401 && original && !isAuthCall && !original._retry && refreshToken) {
+      original._retry = true;
+      try {
+        // plain axios, so this call skips the interceptors
+        const { data } = await axios.post(`${api.defaults.baseURL}/auth/refresh`, { refreshToken });
+        localStorage.setItem("token", data.accessToken);
+        localStorage.setItem("refreshToken", data.refreshToken);
+        original.headers.Authorization = `Bearer ${data.accessToken}`;
+        return api(original); // retry the failed request
+      } catch {
+        // refresh failed: fall through and return the original error
+      }
+    }
+
     return Promise.reject(error);
   }
 );
