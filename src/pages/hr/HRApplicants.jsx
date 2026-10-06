@@ -621,13 +621,13 @@ export default function HRApplicants() {
                     <div className="sticky left-0 z-10 flex items-center gap-3 min-w-0 bg-white group-hover:bg-gray-50/40 transition px-5 py-3.5">
                       <CandidateAvatar user={app.user} />
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-gray-800">{app.user?.name || "—"}</p>
+                        <p className="truncate text-sm font-semibold text-gray-800">{app.applicantName  || "—"}</p>
                       </div>
                     </div>
 
                     {/* Email */}
                     <div className="min-w-0 px-3 py-3.5">
-                      <p className="truncate text-sm text-gray-500">{app.user?.email || "—"}</p>
+                      <p className="truncate text-sm text-gray-500">{app.applicantEmail || "—"}</p>
                     </div>
 
                     {/* Experience */}

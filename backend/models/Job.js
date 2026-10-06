@@ -22,7 +22,7 @@ const jobSchema = new mongoose.Schema(
       enum: ["Full Time", "Part Time", "Internship", "Contract", "Freelance"],
       default: "Full Time",
     },
-    status: { type: String, enum: ["draft", "active", "closed"], default: "active" },
+    status: { type: String, enum: ["draft", "pending", "active", "closed"], default: "active" },
     views: { type: Number, default: 0 },
     postedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
 

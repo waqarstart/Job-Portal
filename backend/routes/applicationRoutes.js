@@ -29,7 +29,7 @@ const router = express.Router();
 const uploadDir = path.join(
   process.cwd(),
   "uploads",
-  "cvs"
+  "cvs"  
 );
 
 fs.mkdirSync(uploadDir, { recursive: true });
@@ -79,6 +79,136 @@ const upload = multer({
   },
 });
 
+
+// ─────────────────────────────────────────────────────────────
+// Guest apply (Careers site), no login needed
+// POST /api/applications/public/:jobId
+// ─────────────────────────────────────────────────────────────
+
+function parseList(value) {
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function discardUpload(req) {
+  if (req.file?.path && fs.existsSync(req.file.path)) {
+    try {
+      fs.unlinkSync(req.file.path);
+    } catch (e) {
+      console.error("Failed to clean up uploaded CV:", e);
+    }
+  }
+}
+
+router.post("/public/:jobId", upload.single("cv"), async (req, res) => {
+  console.log("FILE:", req.file);
+  try {
+    const firstName = (req.body.firstName || "").trim();
+    const lastName = (req.body.lastName || "").trim();
+    const email = (req.body.email || "").trim().toLowerCase();
+    const phone = (req.body.phone || "").trim();
+    const address = (req.body.address || "").trim();
+
+    if (!firstName || !lastName || !email || !phone || !address) {
+      discardUpload(req);
+      return res.status(400).json({ message: "First name, last name, email, phone and address are required." });
+    }
+
+    if (!/^\S+@\S+\.\S+$/.test(email)) {
+      discardUpload(req);
+      return res.status(400).json({ message: "Please enter a valid email address." });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ message: "Resume is required." });
+    }
+
+    const job = await Job.findById(req.params.jobId);
+    if (!job || job.status !== "active") {
+      discardUpload(req);
+      return res.status(404).json({ message: "This job is no longer open." });
+    }
+
+    // The deadline is stored as midnight of that day, so allow the whole day
+    if (
+      job.applicationDeadline &&
+      new Date(job.applicationDeadline).getTime() + 24 * 60 * 60 * 1000 < Date.now()
+    ) {
+      discardUpload(req);
+      return res.status(400).json({ message: "The application deadline for this job has passed." });
+    }
+
+    const existing = await Application.findOne({ job: job._id, applicantEmail: email });
+    if (existing) {
+      discardUpload(req);
+      return res.status(400).json({ message: "You have already applied to this job with this email." });
+    }
+
+    const cvFilePath = req.file.path;
+
+    const application = await Application.create({
+      job: job._id,
+      applicantFirstName: firstName,
+      applicantLastName: lastName,
+      applicantName: `${firstName} ${lastName}`,
+      applicantEmail: email,
+      applicantPhone: phone,
+      applicantAddress: address,
+      applicantSummary: (req.body.summary || "").trim(),
+      coverLetter: (req.body.coverLetter || "").trim(),
+      education: parseList(req.body.education),
+      workExperience: parseList(req.body.experience),
+      cvUrl: `/uploads/cvs/${req.file.filename}`,
+      cvOriginalName: req.file.originalname,
+      cvExtractedText: "",
+      cvRating: null,
+      cvMatchSummary: "",
+      cvMatchedSkills: [],
+      cvMissingSkills: [],
+      cvEvaluationStatus: "pending",
+    });
+
+    res.status(201).json({ message: "Application submitted.", applicationId: application._id });
+
+    // Background CV evaluation, same as the logged-in apply route
+    (async () => {
+      try {
+        const cvText = await extractCvText(cvFilePath);
+        const evaluation = await evaluateCvAgainstJob({
+          cvText,
+          jobDescription: job.description,
+          jobTitle: job.title,
+        });
+        await Application.findByIdAndUpdate(application._id, {
+          cvExtractedText: typeof cvText === "string" ? cvText.slice(0, 8000) : "",
+          cvRating: evaluation.rating,
+          cvMatchSummary: evaluation.summary,
+          cvMatchedSkills: evaluation.matchedSkills,
+          cvMissingSkills: evaluation.missingSkills,
+          cvEvaluationStatus: "completed",
+        });
+      } catch (evaluationError) {
+        console.error("CV evaluation failed:", evaluationError);
+        try {
+          await Application.findByIdAndUpdate(application._id, { cvEvaluationStatus: "failed" });
+        } catch (updateError) {
+          console.error("Failed to mark CV evaluation as failed:", updateError);
+        }
+      }
+    })();
+  } catch (err) {
+    discardUpload(req);
+    if (err.name === "CastError") {
+      return res.status(404).json({ message: "Job not found." });
+    }
+    console.error("Guest application error:", err);
+    res.status(500).json({ message: "Could not submit your application. Please try again." });
+  }
+});
 
 // ─────────────────────────────────────────────────────────────
 // Apply to a job
@@ -535,6 +665,9 @@ router.get(
     }
   }
 );
+
+
+
 
 
 export default router;
