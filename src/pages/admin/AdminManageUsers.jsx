@@ -6,7 +6,7 @@ import {
 } from "react-icons/hi2";
 import AdminLayout from "../../layouts/AdminLayout";
 import Dropdown from "../../components/Dropdown";
-import { getAdminUsers, updateUserRole, deleteAdminUser } from "../../services/adminService";
+import { createAdminUser, getAdminUsers, updateUserRole, deleteAdminUser } from "../../services/adminService";
 import { useToast } from "../../context/ToastContext";
 
 const ROLE_LABEL = { user: "Candidate", hr: "HR", admin: "Admin" };
@@ -31,6 +31,10 @@ export default function AdminManageUsers() {
   const [deleting, setDeleting]     = useState(false);
   const [editModal, setEditModal]   = useState(null);
   const [modalRole, setModalRole]   = useState("");
+  const [addModal, setAddModal] = useState(false);
+  const [addForm, setAddForm]   = useState({ name: "", email: "", password: "", role: "hr" });
+  const [addError, setAddError] = useState("");
+  const [adding, setAdding]     = useState(false);
 
   async function load() {
     setLoading(true);
@@ -69,13 +73,30 @@ export default function AdminManageUsers() {
     }
   }
 
+  async function handleAdd() {
+  setAddError("");
+  setAdding(true);
+  try {
+    const created = await createAdminUser(addForm);
+    setUsers((prev) => [created, ...prev]);
+    setAddModal(false);
+    setAddForm({ name: "", email: "", password: "", role: "hr" });
+  } catch (err) {
+    setAddError(err?.response?.data?.message || "Failed to create user.");
+  } finally {
+    setAdding(false);
+  }
+}
+
   // Pagination
   const totalPages = Math.ceil(users.length / PAGE_SIZE);
   const paginated  = users.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <AdminLayout title="Manage Users">
-      <p className="mb-6 text-sm text-gray-500">View and manage all users in the system</p>
+      <p className="mb-6 text-sm text-gray-500">
+        View and manage all users in the system
+      </p>
 
       {/* ── Toolbar ── */}
       <div className="mb-6 flex flex-wrap items-center gap-3">
@@ -106,7 +127,10 @@ export default function AdminManageUsers() {
         <div className="flex-1" />
 
         {/* Add New User */}
-        <button className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 transition">
+        <button
+          onClick={() => setAddModal(true)}
+          className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 transition"
+        >
           <HiOutlinePlus className="h-4 w-4" />
           Add New User
         </button>
@@ -126,70 +150,99 @@ export default function AdminManageUsers() {
           </thead>
           <tbody className="divide-y divide-gray-50">
             {loading ? (
-              <tr><td colSpan={5} className="py-12 text-center text-sm text-gray-400">Loading...</td></tr>
-            ) : paginated.length === 0 ? (
-              <tr><td colSpan={5} className="py-12 text-center text-sm text-gray-400">No users found.</td></tr>
-            ) : paginated.map((u) => (
-              <tr key={u._id} className="hover:bg-gray-50 transition">
-                {/* User */}
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-500 text-sm font-bold text-white">
-                      {u.name[0].toUpperCase()}
-                    </div>
-                    <div>
-                      <p className="font-semibold text-gray-800">{u.name}</p>
-                      <p className="text-xs text-gray-400">{u.email}</p>
-                    </div>
-                  </div>
-                </td>
-
-                {/* Role — display the user's current role only */}
-                <td className="px-6 py-4">
-                  <span className={`inline-flex rounded-full px-3 py-1.5 text-xs font-semibold ${ROLE_STYLE[u.role] ?? "bg-gray-100 text-gray-600"}`}>
-                    {ROLE_LABEL[u.role] ?? u.role}
-                  </span>
-                </td>
-
-                {/* Joined */}
-                <td className="px-6 py-4 text-sm text-gray-500">
-                  {new Date(u.createdAt).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" })}
-                </td>
-
-                {/* Status */}
-                <td className="px-6 py-4">
-                  <span className="flex items-center gap-1.5 text-xs font-semibold text-green-600">
-                    <span className="h-2 w-2 rounded-full bg-green-500 inline-block" />
-                    Active
-                  </span>
-                </td>
-
-                {/* Actions */}
-                <td className="px-6 py-4">
-                  <div className="flex items-center justify-center gap-2">
-                    <button
-                      onClick={() => handleView(u)}
-                      title={u.role === "hr" ? "View company profile" : "View candidate profile"}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 transition"
-                    >
-                      <HiOutlineEye className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => { setEditModal(u); setModalRole(u.role); }}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-blue-500 hover:bg-blue-50 transition"
-                    >
-                      <HiOutlinePencilSquare className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => setDeleteModal(u)}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-red-500 hover:bg-red-50 transition"
-                    >
-                      <HiOutlineTrash className="h-4 w-4" />
-                    </button>
-                  </div>
+              <tr>
+                <td
+                  colSpan={5}
+                  className="py-12 text-center text-sm text-gray-400"
+                >
+                  Loading...
                 </td>
               </tr>
-            ))}
+            ) : paginated.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={5}
+                  className="py-12 text-center text-sm text-gray-400"
+                >
+                  No users found.
+                </td>
+              </tr>
+            ) : (
+              paginated.map((u) => (
+                <tr key={u._id} className="hover:bg-gray-50 transition">
+                  {/* User */}
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-500 text-sm font-bold text-white">
+                        {u.name[0].toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-800">{u.name}</p>
+                        <p className="text-xs text-gray-400">{u.email}</p>
+                      </div>
+                    </div>
+                  </td>
+
+                  {/* Role — display the user's current role only */}
+                  <td className="px-6 py-4">
+                    <span
+                      className={`inline-flex rounded-full px-3 py-1.5 text-xs font-semibold ${ROLE_STYLE[u.role] ?? "bg-gray-100 text-gray-600"}`}
+                    >
+                      {ROLE_LABEL[u.role] ?? u.role}
+                    </span>
+                  </td>
+
+                  {/* Joined */}
+                  <td className="px-6 py-4 text-sm text-gray-500">
+                    {new Date(u.createdAt).toLocaleDateString("en-US", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </td>
+
+                  {/* Status */}
+                  <td className="px-6 py-4">
+                    <span className="flex items-center gap-1.5 text-xs font-semibold text-green-600">
+                      <span className="h-2 w-2 rounded-full bg-green-500 inline-block" />
+                      Active
+                    </span>
+                  </td>
+
+                  {/* Actions */}
+                  <td className="px-6 py-4">
+                    <div className="flex items-center justify-center gap-2">
+                      <button
+                        onClick={() => handleView(u)}
+                        title={
+                          u.role === "hr"
+                            ? "View company profile"
+                            : "View candidate profile"
+                        }
+                        className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 transition"
+                      >
+                        <HiOutlineEye className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => {
+                          setEditModal(u);
+                          setModalRole(u.role);
+                        }}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-blue-500 hover:bg-blue-50 transition"
+                      >
+                        <HiOutlinePencilSquare className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => setDeleteModal(u)}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-red-500 hover:bg-red-50 transition"
+                      >
+                        <HiOutlineTrash className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
 
@@ -197,7 +250,8 @@ export default function AdminManageUsers() {
         {!loading && users.length > 0 && (
           <div className="flex items-center justify-between border-t px-6 py-4">
             <p className="text-xs text-gray-500">
-              Showing {(page - 1) * PAGE_SIZE + 1} to {Math.min(page * PAGE_SIZE, users.length)} of {users.length} users
+              Showing {(page - 1) * PAGE_SIZE + 1} to{" "}
+              {Math.min(page * PAGE_SIZE, users.length)} of {users.length} users
             </p>
             <div className="flex items-center gap-1">
               <button
@@ -234,21 +288,91 @@ export default function AdminManageUsers() {
         )}
       </div>
 
+      {addModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+            <h3 className="font-bold text-gray-800">Add New User</h3>
+            <div className="mt-4 space-y-3">
+              <input
+                value={addForm.name}
+                onChange={(e) =>
+                  setAddForm({ ...addForm, name: e.target.value })
+                }
+                placeholder="Full name"
+                className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-blue-500"
+              />
+              <input
+                type="email"
+                value={addForm.email}
+                onChange={(e) =>
+                  setAddForm({ ...addForm, email: e.target.value })
+                }
+                placeholder="Email"
+                className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-blue-500"
+              />
+              <input
+                type="password"
+                value={addForm.password}
+                onChange={(e) =>
+                  setAddForm({ ...addForm, password: e.target.value })
+                }
+                placeholder="Password (min 6 chars)"
+                className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-blue-500"
+              />
+              <Dropdown
+                value={addForm.role}
+                onChange={(v) => setAddForm({ ...addForm, role: v })}
+                options={[
+                  { value: "hr", label: "HR" },
+                  { value: "user", label: "Candidate" },
+                ]}
+                fullWidth
+              />
+              {addError && <p className="text-xs text-red-600">{addError}</p>}
+            </div>
+            <div className="mt-5 flex gap-3">
+              <button
+                onClick={() => {
+                  setAddModal(false);
+                  setAddError("");
+                }}
+                className="flex-1 rounded-xl border py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAdd}
+                disabled={adding}
+                className="flex-1 rounded-xl bg-blue-600 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+              >
+                {adding ? "Creating..." : "Create"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Delete Modal ── */}
       {deleteModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
             <h3 className="font-bold text-gray-800">Delete User</h3>
             <p className="mt-2 text-sm text-gray-500">
-              Are you sure you want to delete <strong>{deleteModal.name}</strong>? This cannot be undone.
+              Are you sure you want to delete{" "}
+              <strong>{deleteModal.name}</strong>? This cannot be undone.
             </p>
             <div className="mt-5 flex gap-3">
-              <button onClick={() => setDeleteModal(null)}
-                className="transition-all duration-200 flex-1 rounded-xl border py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50">
+              <button
+                onClick={() => setDeleteModal(null)}
+                className="transition-all duration-200 flex-1 rounded-xl border py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50"
+              >
                 Cancel
               </button>
-              <button onClick={handleDelete} disabled={deleting}
-                className="transition-all duration-200 flex-1 rounded-xl bg-red-600 py-2.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60">
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="transition-all duration-200 flex-1 rounded-xl bg-red-600 py-2.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
+              >
                 {deleting ? "Deleting..." : "Delete"}
               </button>
             </div>
@@ -263,7 +387,9 @@ export default function AdminManageUsers() {
             <h3 className="font-bold text-gray-800">Edit User</h3>
             <p className="mt-1 text-sm text-gray-400">{editModal.email}</p>
             <div className="mt-4">
-              <label className="text-xs font-semibold text-gray-500 uppercase">Role</label>
+              <label className="text-xs font-semibold text-gray-500 uppercase">
+                Role
+              </label>
               {editModal.role === "admin" ? (
                 <div className="mt-1 rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm font-medium text-gray-600">
                   Admin
@@ -271,7 +397,10 @@ export default function AdminManageUsers() {
               ) : (
                 <Dropdown
                   value={modalRole}
-                  onChange={(v) => { setModalRole(v); handleRoleChange(editModal._id, v); }}
+                  onChange={(v) => {
+                    setModalRole(v);
+                    handleRoleChange(editModal._id, v);
+                  }}
                   options={[
                     { value: "user", label: "Candidate" },
                     { value: "hr", label: "HR" },
@@ -281,8 +410,10 @@ export default function AdminManageUsers() {
               )}
             </div>
             <div className="mt-5 flex gap-3">
-              <button onClick={() => setEditModal(null)}
-                className="transition-all duration-200 flex-1 rounded-xl border py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50">
+              <button
+                onClick={() => setEditModal(null)}
+                className="transition-all duration-200 flex-1 rounded-xl border py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50"
+              >
                 Close
               </button>
             </div>

@@ -5,6 +5,11 @@ export async function getAdminDashboard() {
   return data;
 }
 
+export async function createAdminUser(payload) {
+  const { data } = await api.post("/admin/users", payload);
+  return data;
+}
+
 export async function getAdminUsers(params = {}) {
   const { data } = await api.get("/admin/users", { params });
   return data;

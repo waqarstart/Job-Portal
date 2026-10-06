@@ -5,6 +5,7 @@ import Application from "../models/Application.js";
 import Company from "../models/Company.js";
 import { requireAuth, requireAdmin } from "../middleware/auth.js";
 import { escapeRegex } from "../utils/security.js";
+import bcrypt from "bcryptjs"; // match whatever authRoutes.js uses
 
 const router = express.Router();
 
@@ -58,6 +59,32 @@ router.get("/users", requireAuth, requireAdmin, async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
+
+
+router.post("/users", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { name, email, password, role } = req.body;
+    if (!name || !email || !password) {
+      return res.status(400).json({ message: "Name, email and password are required." });
+    }
+    if (!["user", "hr"].includes(role)) {
+      return res.status(400).json({ message: "Invalid role." });
+    }
+    if (password.length < 6) {
+      return res.status(400).json({ message: "Password must be at least 6 characters." });
+    }
+    const exists = await User.findOne({ email: email.toLowerCase().trim() });
+    if (exists) return res.status(409).json({ message: "Email already in use." });
+
+    const hashed = await bcrypt.hash(password, 10);
+    const user = await User.create({ name, email, password: hashed, role, authProvider: "local" });
+    const { password: _pw, ...safe } = user.toObject();
+    res.status(201).json(safe);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 
 router.patch("/users/:id/role", requireAuth, requireAdmin, async (req, res) => {
   try {
