@@ -1,11 +1,12 @@
 import express from "express";
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import { OAuth2Client } from "google-auth-library";
 import User from "../models/User.js";
 import { sendPasswordResetEmail } from "../utils/mailer.js";
 import { authLimiter, passwordResetLimiter } from "../middleware/rateLimit.js";
+import { generateAccessToken, generateRefreshToken } from "../utils/generateJWT.js"
+import jwt from "jsonwebtoken";
 
 const router = express.Router();
 
@@ -13,13 +14,6 @@ const googleClient = process.env.GOOGLE_CLIENT_ID
   ? new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
   : null;
 
-function makeToken(user) {
-  return jwt.sign(
-    { id: user._id, name: user.name, email: user.email, role: user.role },
-    process.env.JWT_SECRET,
-    { expiresIn: "7d" }
-  );
-}
 
 function publicUser(user) {
   return { id: user._id, name: user.name, email: user.email, role: user.role };
@@ -41,8 +35,9 @@ router.post("/register", authLimiter, async (req, res) => {
     const hashed = await bcrypt.hash(password, 10);
     const user = await User.create({ name, email: email.toLowerCase(), password: hashed });
 
-    const token = makeToken(user);
-    res.status(201).json({ token, user: publicUser(user) });
+    const accessToken = generateAccessToken(user);
+    const refreshToken = generateRefreshToken(user);
+    res.status(201).json({ accessToken, refreshToken, user: publicUser(user) });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -68,8 +63,11 @@ router.post("/login", authLimiter, async (req, res) => {
       return res.status(400).json({ message: "Invalid email or password." });
     }
 
-    const token = makeToken(user);
-    res.json({ token, user: publicUser(user) });
+    // Generate both tokens
+    const accessToken = generateAccessToken(user);
+    const refreshToken = generateRefreshToken(user);
+
+    res.json({ accessToken, refreshToken, user: publicUser(user) });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -124,10 +122,42 @@ router.post("/google", async (req, res) => {
       });
     }
 
-    const token = makeToken(user);
-    res.json({ token, user: publicUser(user) });
+    const accessToken = generateAccessToken(user);
+    const refreshToken = generateRefreshToken(user);
+    res.json({ accessToken, refreshToken, user: publicUser(user) });
   } catch (err) {
     res.status(400).json({ message: "Google sign-in failed. " + err.message });
+  }
+});
+
+
+router.post("/refresh", async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+    if (!refreshToken) {
+      return res.status(401).json({ message: "Refresh token required." });
+    }
+
+    let decoded;
+    try {
+      decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+    } catch {
+      return res.status(401).json({ message: "Invalid or expired refresh token." });
+    }
+
+    // The refresh token only holds the id, so load the user
+    // to get their current name, email and role.
+    const user = await User.findById(decoded.id);
+    if (!user) {
+      return res.status(401).json({ message: "User no longer exists." });
+    }
+
+    const accessToken = generateAccessToken(user);
+    const newRefreshToken = generateRefreshToken(user);
+
+    res.json({ accessToken, refreshToken: newRefreshToken, user: publicUser(user) });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 });
 
