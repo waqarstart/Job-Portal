@@ -325,6 +325,9 @@ router.post(
         company,
         city,
         description,
+        aboutRole,
+        responsibilities,
+        requirements,
         salary,
         type,
         workMode,
@@ -354,6 +357,9 @@ router.post(
         company,
         city,
         description,
+        aboutRole,
+        responsibilities,
+        requirements,
         salary,
         type,
         workMode,
@@ -380,6 +386,7 @@ router.post(
         "Job created with interview questions:",
         job.interviewQuestions
       );
+      console.log("===================job", job)
 
       res.status(201).json(job);
     } catch (err) {

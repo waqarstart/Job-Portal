@@ -47,3 +47,15 @@ export async function getAdminAnalytics() {
   const { data } = await api.get("/admin/analytics");
   return data;
 }
+
+
+export async function createAdminJob(payload) {
+  const { data } = await api.post("/jobs", payload);
+  return data;
+}
+
+
+export async function updateAdminJob(id, payload) {
+  const { data } = await api.put(`/jobs/${id}`, payload);
+  return data;
+}
