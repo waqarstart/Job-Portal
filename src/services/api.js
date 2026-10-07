@@ -1,8 +1,9 @@
 import axios from "axios";
 import { startLoading, stopLoading, isTransitioning } from "../utils/loadingBus";
+import { API_URL } from "../config";
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:5000/api",
+  baseURL: API_URL,
 });
 
 api.interceptors.request.use((config) => {

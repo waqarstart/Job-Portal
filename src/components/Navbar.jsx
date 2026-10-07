@@ -17,8 +17,8 @@ import {
   HiOutlineLanguage, HiOutlineLockClosed, HiOutlineSquares2X2,
   HiOutlineArrowRightOnRectangle, HiChevronDown,
 } from "react-icons/hi2";
+import { FILE_BASE } from "../config";
 
-const FILE_BASE = (import.meta.env.VITE_API_URL || "http://localhost:5000/api").replace(/\/api$/, "");
 
 const LANGUAGES = ["English", "اردو"];
 const LANGUAGE_OPTIONS = LANGUAGES.map((language) => ({ value: language, label: language }));

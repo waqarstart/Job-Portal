@@ -8,8 +8,7 @@ import {
 } from "react-icons/hi2";
 import AdminLayout from "../../layouts/AdminLayout";
 import { getUserById } from "../../services/userService";
-
-const FILE_BASE = (import.meta.env.VITE_API_URL || "http://localhost:5000/api").replace(/\/api$/, "");
+import { FILE_BASE } from "../../config";
 
 function Section({ icon: Icon, title, children }) {
   return (

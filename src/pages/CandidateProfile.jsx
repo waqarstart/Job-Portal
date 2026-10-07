@@ -25,8 +25,8 @@ import CandidateLayout from "../layouts/CandidateLayout";
 import { getMyProfile, updateMyProfile, uploadProfilePicture, uploadProfileDocument, deleteProfileDocument, uploadOtherDocument, deleteOtherDocument } from "../services/userService";
 import { setCachedProfilePicture } from "../utils/profileCache";
 import { useToast } from "../context/ToastContext";
+import { FILE_BASE } from "../config";
 
-const FILE_BASE = (import.meta.env.VITE_API_URL || "http://localhost:5000/api").replace(/\/api$/, "");
 const EDUCATION_LEVELS = ["School", "Intermediate", "Undergraduate", "Master", "PhD"];
 const EXPERIENCE_OPTIONS = Array.from({ length: 21 }, (_, i) => i);
 const PROFILE_READY_THRESHOLD = 75;

@@ -84,7 +84,6 @@ function avatarColor(name = "") {
   return AVATAR_COLORS[n % AVATAR_COLORS.length];
 }
 
-const FILE_BASE = (import.meta.env.VITE_API_URL || "http://localhost:5000/api").replace(/\/api$/, "");
 
 function timeAgo(date) {
   const days = Math.floor((Date.now() - new Date(date)) / 86400000);

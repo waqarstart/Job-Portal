@@ -105,7 +105,6 @@ function discardUpload(req) {
 }
 
 router.post("/public/:jobId", upload.single("cv"), async (req, res) => {
-  console.log("FILE:", req.file);
   try {
     const firstName = (req.body.firstName || "").trim();
     const lastName = (req.body.lastName || "").trim();

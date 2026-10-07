@@ -29,10 +29,7 @@ import {
 import InterviewFeedbackPanel, {
   InterviewStatusBadge,
 } from "../../components/InterviewFeedbackPanel";
-
-const FILE_BASE = (
-  import.meta.env.VITE_API_URL || "http://localhost:5000/api"
-).replace(/\/api$/, "");
+import { FILE_BASE } from "../../config";
 
 // CV rating color — 50+ is green, below 50 is red, everywhere a rating shows
 function ratingColors(rating) {

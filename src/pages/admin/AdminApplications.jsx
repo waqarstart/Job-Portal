@@ -8,8 +8,7 @@ import AdminLayout from "../../layouts/AdminLayout";
 import Dropdown from "../../components/Dropdown";
 import { getAdminApplications } from "../../services/adminService";
 import { withAuthToken } from "../../utils/fileUrl";
-
-const FILE_BASE = (import.meta.env.VITE_API_URL || "http://localhost:5000/api").replace(/\/api$/, "");
+import { FILE_BASE } from "../../config";
 
 const PAGE_SIZE = 8;
 

@@ -12,8 +12,8 @@ import Navbar from "../components/Navbar";
 import { getCompanyDetail } from "../services/jobService";
 import { saveJob, unsaveJob, getSavedJobs } from "../services/savedJobService";
 import { useAuth } from "../context/AuthContext";
+import { FILE_BASE } from "../config";
 
-const FILE_BASE = (import.meta.env.VITE_API_URL || "http://localhost:5000/api").replace(/\/api$/, "");
 
 const AVATAR_COLORS = [
   "bg-blue-600","bg-violet-600","bg-emerald-600",
