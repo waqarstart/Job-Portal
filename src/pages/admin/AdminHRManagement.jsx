@@ -8,8 +8,8 @@ import {
 } from "react-icons/hi2";
 import AdminLayout from "../../layouts/AdminLayout";
 import { getHRManagement, updateUserRole } from "../../services/adminService";
+import { FILE_BASE } from "../../config";
 
-const FILE_BASE = (import.meta.env.VITE_API_URL || "http://localhost:5000/api").replace(/\/api$/, "");
 const PAGE_SIZE = 8;
 
 // Generate short abbreviation + color for company logo

@@ -10,8 +10,8 @@ import Footer from "../components/Footer";
 import Dropdown from "../components/Dropdown";
 import Reveal from "../components/Reveal";
 import { getAllCompanies, getCompanyIndustries, getPublicStats } from "../services/jobService";
+import { FILE_BASE } from "../config";
 
-const FILE_BASE = (import.meta.env.VITE_API_URL || "http://localhost:5000/api").replace(/\/api$/, "");
 
 const SIZE_OPTIONS = [
   { value: "",        label: "All Company Sizes" },

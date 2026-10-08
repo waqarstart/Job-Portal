@@ -4,7 +4,7 @@
 
 body {
   margin: 0;
-  font-family: system-ui, "Segoe UI", Roboto, sans-serif;
+  font-family: "Montserrat", system-ui, "Segoe UI", Roboto, sans-serif;
 }
 
 /* Gentle continuous bob for the floating hero stat cards — staggered via

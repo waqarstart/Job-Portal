@@ -14,6 +14,7 @@ import {
   HiOutlineBell, HiOutlineArrowUpTray,
   HiOutlineArrowPath,
 } from "react-icons/hi2";
+import { FILE_BASE } from "../config";
 
 const SORT_OPTIONS = [
   { value: "recent", label: "Most Recent" },
@@ -21,7 +22,6 @@ const SORT_OPTIONS = [
   { value: "salary-low", label: "Salary: Low to High" },
 ];
 
-const FILE_BASE = (import.meta.env.VITE_API_URL || "http://localhost:5000/api").replace(/\/api$/, "");
 
 function parseSalaryNumber(salary = "") {
   const nums = (salary.match(/\d[\d,]*/g) || []).map((n) => parseInt(n.replace(/,/g, "")));

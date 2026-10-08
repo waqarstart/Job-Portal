@@ -19,8 +19,8 @@ import { getCandidateDashboard } from "../services/dashboardService";
 import { getMyApplications } from "../services/applicationService";
 import { searchJobs } from "../services/jobService";
 import { useAuth } from "../context/AuthContext";
+import { FILE_BASE } from "../config";
 
-const FILE_BASE = (import.meta.env.VITE_API_URL || "http://localhost:5000/api").replace(/\/api$/, "");
 
 const PIPELINE_STAGES = [
   { key: "applied", label: "Applied", color: "#2563eb" },

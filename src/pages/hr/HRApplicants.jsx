@@ -29,10 +29,7 @@ import {
 import InterviewFeedbackPanel, {
   InterviewStatusBadge,
 } from "../../components/InterviewFeedbackPanel";
-
-const FILE_BASE = (
-  import.meta.env.VITE_API_URL || "http://localhost:5000/api"
-).replace(/\/api$/, "");
+import { FILE_BASE } from "../../config";
 
 // CV rating color — 50+ is green, below 50 is red, everywhere a rating shows
 function ratingColors(rating) {
@@ -621,13 +618,13 @@ export default function HRApplicants() {
                     <div className="sticky left-0 z-10 flex items-center gap-3 min-w-0 bg-white group-hover:bg-gray-50/40 transition px-5 py-3.5">
                       <CandidateAvatar user={app.user} />
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-gray-800">{app.user?.name || "—"}</p>
+                        <p className="truncate text-sm font-semibold text-gray-800">{app.applicantName  || "—"}</p>
                       </div>
                     </div>
 
                     {/* Email */}
                     <div className="min-w-0 px-3 py-3.5">
-                      <p className="truncate text-sm text-gray-500">{app.user?.email || "—"}</p>
+                      <p className="truncate text-sm text-gray-500">{app.applicantEmail || "—"}</p>
                     </div>
 
                     {/* Experience */}

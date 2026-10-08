@@ -7,6 +7,7 @@ import {
 import AdminLayout from "../../layouts/AdminLayout";
 import Dropdown from "../../components/Dropdown";
 import { getAdminJobs, updateJobStatus, deleteAdminJob } from "../../services/adminService";
+import { useNavigate } from "react-router-dom";
 
 const PAGE_SIZE = 8;
 
@@ -33,6 +34,8 @@ export default function AdminManageJobs() {
   const [page, setPage]           = useState(1);
   const [deleteModal, setDeleteModal] = useState(null);
   const [deleting, setDeleting]   = useState(false);
+
+  const navigate = useNavigate();
 
   async function load() {
     setLoading(true);
@@ -99,7 +102,7 @@ export default function AdminManageJobs() {
         <div className="flex-1" />
 
         {/* Post New Job */}
-        <button className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 transition">
+        <button onClick={() => navigate("/admin/jobs/new")} className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 transition">
           <HiOutlinePlus className="h-4 w-4" />
           Post New Job
         </button>
@@ -151,7 +154,7 @@ export default function AdminManageJobs() {
 
               {/* Actions */}
               <div className="flex items-center gap-2 shrink-0">
-                <button className="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 text-blue-500 hover:bg-blue-50 transition">
+                <button onClick={() => navigate(`/admin/jobs/${job._id}/edit`)} className="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 text-blue-500 hover:bg-blue-50 transition">
                   <HiOutlinePencilSquare className="h-4 w-4" />
                 </button>
                 <button

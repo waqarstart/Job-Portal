@@ -12,8 +12,7 @@ import HRLayout from "../../layouts/HRLayout";
 import Dropdown from "../../components/Dropdown";
 import { getHRCompany, saveHRCompany, getHRJobs } from "../../services/hrService";
 import { useToast } from "../../context/ToastContext";
-
-const FILE_BASE = (import.meta.env.VITE_API_URL || "http://localhost:5000/api").replace(/\/api$/, "");
+import { FILE_BASE } from "../../config";
 
 const SIZE_OPTIONS = ["1-10", "11-50", "51-100", "101-500", "500+"];
 const INDUSTRY_OPTIONS = [

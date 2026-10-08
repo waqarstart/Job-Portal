@@ -5,6 +5,11 @@ export async function getAdminDashboard() {
   return data;
 }
 
+export async function createAdminUser(payload) {
+  const { data } = await api.post("/admin/users", payload);
+  return data;
+}
+
 export async function getAdminUsers(params = {}) {
   const { data } = await api.get("/admin/users", { params });
   return data;
@@ -45,5 +50,17 @@ export async function getHRManagement() {
 
 export async function getAdminAnalytics() {
   const { data } = await api.get("/admin/analytics");
+  return data;
+}
+
+
+export async function createAdminJob(payload) {
+  const { data } = await api.post("/jobs", payload);
+  return data;
+}
+
+
+export async function updateAdminJob(id, payload) {
+  const { data } = await api.put(`/jobs/${id}`, payload);
   return data;
 }

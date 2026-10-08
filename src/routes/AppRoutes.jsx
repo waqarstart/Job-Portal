@@ -30,6 +30,8 @@ import Interview from "../pages/Interview";
 import AdminDashboard from "../pages/admin/AdminDashboard";
 import AdminManageUsers from "../pages/admin/AdminManageUsers";
 import AdminManageJobs from "../pages/admin/AdminManageJobs";
+import AdminPostJob from "../pages/admin/AdminPostJob";
+import AdminEditJob from "../pages/admin/AdminEditJob";
 import AdminApproveJobs from "../pages/admin/AdminApproveJobs";
 import AdminAnalytics from "../pages/admin/AdminAnalytics";
 import AdminApplications from "../pages/admin/AdminApplications";
@@ -160,6 +162,8 @@ export default function AppRoutes() {
         <Route path="/admin/users" element={<ProtectedRoute admin><AdminManageUsers /></ProtectedRoute>} />
         <Route path="/admin/users/:id/candidate" element={<ProtectedRoute admin><AdminViewCandidate /></ProtectedRoute>} />
         <Route path="/admin/jobs" element={<ProtectedRoute admin><AdminManageJobs /></ProtectedRoute>} />
+        <Route path="/admin/jobs/new" element={<ProtectedRoute admin><AdminPostJob /></ProtectedRoute>} />
+        <Route path="/admin/jobs/:id/edit" element={<ProtectedRoute admin><AdminEditJob /></ProtectedRoute>} />
         <Route path="/admin/approve-jobs" element={<ProtectedRoute admin><AdminApproveJobs /></ProtectedRoute>} />
         <Route path="/admin/analytics" element={<ProtectedRoute admin><AdminAnalytics /></ProtectedRoute>} />
         <Route path="/admin/applications" element={<ProtectedRoute admin><AdminApplications /></ProtectedRoute>} />

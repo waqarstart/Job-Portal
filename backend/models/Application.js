@@ -11,8 +11,37 @@ const applicationSchema = new mongoose.Schema(
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true,
+      // user becomes optional now -- in case of guest login
+      // required: true,
     },
+
+    // Guest applicants (applied from the Careers site, no account)
+    applicantFirstName: String,
+    applicantLastName: String,
+    applicantName: String, // first + last, for display and search
+    applicantEmail: { type: String, lowercase: true, trim: true },
+    applicantPhone: String,
+    applicantAddress: String,
+    applicantSummary: String,
+    coverLetter: String,
+    education: [
+      {
+        institution: String,
+        degree: String,
+        fieldOfStudy: String,
+        startDate: String,
+        endDate: String,
+      },
+    ],
+    workExperience: [
+      {
+        company: String,
+        title: String,
+        startDate: String,
+        endDate: String,
+        description: String,
+      },
+    ],
 
     cvUrl: {
       type: String,
@@ -160,7 +189,7 @@ const applicationSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 export default mongoose.model(

@@ -17,8 +17,7 @@ import NotificationMenu from "../components/NotificationMenu";
 import { getMyApplications } from "../services/applicationService";
 import { getMyProfile } from "../services/userService";
 import { getCachedProfilePicture, setCachedProfilePicture, getCachedNotifications, setCachedNotifications } from "../utils/profileCache";
-
-const FILE_BASE = (import.meta.env.VITE_API_URL || "http://localhost:5000/api").replace(/\/api$/, "");
+import { FILE_BASE } from "../config";
 
 const navItems = [
   { to: "/dashboard", label: "Dashboard", icon: HiOutlineSquares2X2 },

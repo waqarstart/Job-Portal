@@ -31,8 +31,8 @@ import {
   getCVStats,
   getCVUsage,
 } from "../services/cvService";
+import { FILE_BASE } from "../config";
 
-const FILE_BASE = (import.meta.env.VITE_API_URL || "http://localhost:5000/api").replace(/\/api$/, "");
 const MAX_CVS = 10;
 
 const SORT_OPTIONS = [

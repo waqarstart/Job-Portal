@@ -10,12 +10,7 @@ import {
   getAllApplications,
   submitManualRating,
 } from "../services/applicationService";
-
-// Strip the trailing /api so we can build absolute links to uploaded files
-const FILE_BASE = (
-  import.meta.env.VITE_API_URL ||
-  "http://localhost:5000/api"
-).replace(/\/api$/, "");
+import { FILE_BASE } from "../config";
 
 const emptyForm = {
   title: "",
