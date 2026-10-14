@@ -47,7 +47,7 @@ const app = express();
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
-  })
+  }),
 );
 
 // =========================
@@ -64,26 +64,10 @@ const allowedOrigins = [
 
 app.use(
   cors({
-    origin: function (origin, callback) {
-      // Allow requests without an origin
-      // (Postman, server-to-server requests, etc.)
-      if (!origin) {
-        return callback(null, true);
-      }
-
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-
-      return callback(
-        new Error(`CORS blocked request from origin: ${origin}`)
-      );
-    },
-
+    origin: true, 
     credentials: true,
-  })
+  }),
 );
-
 // =========================
 // MIDDLEWARE
 // =========================
@@ -101,10 +85,7 @@ app.use(express.urlencoded({ extended: true }));
 // be publicly viewable).
 app.use("/uploads", fileRoutes);
 
-app.use(
-  "/uploads",
-  express.static(path.join(process.cwd(), "uploads"))
-);
+app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
 // =========================
 // API ROUTES
