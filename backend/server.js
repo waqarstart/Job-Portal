@@ -20,6 +20,9 @@ import adminRoutes from "./routes/adminRoutes.js";
 import newsletterRoutes from "./routes/newsletterRoutes.js";
 import fileRoutes from "./routes/fileRoutes.js";
 
+import dns from "dns";
+dns.setServers(["8.8.8.8"]);
+
 dotenv.config();
 // Also try repo-root .env when running from /backend
 dotenv.config({ path: path.resolve(process.cwd(), "../.env") });
@@ -53,7 +56,10 @@ app.use(
 
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://job-portal-frontend-blue-zeta.vercel.app",
+  "http://10.10.195.25:5000",
+  ...(process.env.CAREERS_ORIGINS
+    ? process.env.CAREERS_ORIGINS.split(",").map((o) => o.trim())
+    : []),
 ];
 
 app.use(
