@@ -31,8 +31,10 @@ export async function deleteHRJob(id) {
 }
 
 // Applicants
-export async function getHRApplicants() {
-  const { data } = await api.get("/hr/applicants");
+export async function getHRApplicants(highAts = false) {
+  const { data } = await api.get("/hr/applicants", {
+    params: highAts ? { highAts: true } : {},
+  });
   return data;
 }
 

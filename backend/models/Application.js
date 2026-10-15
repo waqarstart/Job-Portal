@@ -52,6 +52,14 @@ const applicationSchema = new mongoose.Schema(
 
     // AI CV evaluation
     cvRating: Number,
+    // ATS resume checker
+    atsScore: Number,
+    jobMatchScore: Number,
+    atsStatus: {
+      type: String,
+      enum: ["pending", "completed", "failed"],
+      default: "pending",
+    },
     cvMatchSummary: String,
     cvMatchedSkills: [String],
     cvMissingSkills: [String],

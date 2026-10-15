@@ -265,17 +265,17 @@ function CvEvalPanel({ application }) {
       </div>
     );
   }
-  if (cvEvaluationStatus === "failed") {
-    return (
-      <div className="mt-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3">
-        <p className="text-xs font-medium text-red-800">CV scoring failed</p>
-        <p className="mt-1 text-xs text-red-700">
-          AI evaluation could not be completed. Ask the candidate to re-apply, or
-          contact support if this keeps happening.
-        </p>
-      </div>
-    );
-  }
+  // if (cvEvaluationStatus === "failed") {3
+  //   return (
+  //     <div className="mt-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3">
+  //       <p className="text-xs font-medium text-red-800">CV scoring failed</p>
+  //       <p className="mt-1 text-xs text-red-700">
+  //         AI evaluation could not be completed. Ask the candidate to re-apply, or
+  //         contact support if this keeps happening thiss heree.
+  //       </p>
+  //     </div>
+  //   );
+  // }
   if (cvEvaluationStatus !== "completed" && typeof cvRating !== "number") return null;
 
   return (
@@ -368,6 +368,7 @@ export default function HRApplicants() {
   const [dateTo, setDateTo]     = useState("");
   const [showDatePicker, setShowDatePicker] = useState(false);
   const dateRef = useRef(null);
+  const [atsView, setAtsView] = useState("high")
 
   useEffect(() => {
     function handler(e) {
@@ -379,11 +380,11 @@ export default function HRApplicants() {
   const [sortBy, setSortBy]     = useState("date_desc"); // date_desc, date_asc, cv_desc, cv_asc
 
   useEffect(() => {
-    getHRApplicants()
+    getHRApplicants(atsView === "high")
       .then(setApps)
       .catch((err) => console.error("Failed to load applicants:", err))
       .finally(() => setLoading(false));
-  }, []);
+  }, [atsView]);
 
   async function handleStatus(id, status) {
     try {
@@ -440,6 +441,8 @@ export default function HRApplicants() {
       if (sortBy === "date_asc")  return new Date(a.createdAt) - new Date(b.createdAt);
       if (sortBy === "cv_desc")   return (b.cvRating ?? -1) - (a.cvRating ?? -1);
       if (sortBy === "cv_asc")    return (a.cvRating ?? 999) - (b.cvRating ?? 999);
+      if (sortBy === "ats_desc")   return (b.atsScore ?? -1) - (a.atsScore ?? -1);
+      if (sortBy === "match_desc") return (b.jobMatchScore ?? -1) - (a.jobMatchScore ?? -1);
       return 0;
     });
   }, [apps, search, statusFilter, jobFilter, dateFrom, dateTo, sortBy]);
@@ -507,6 +510,8 @@ export default function HRApplicants() {
             { value: "date_asc",  label: "Oldest First" },
             { value: "cv_desc",   label: "CV Score: High to Low" },
             { value: "cv_asc",    label: "CV Score: Low to High" },
+            { value: "ats_desc",   label: "ATS Score: High to Low" },
+            { value: "match_desc", label: "Job Match: High to Low" },
           ]}
           placeholder="Sort By"
         />
@@ -549,6 +554,20 @@ export default function HRApplicants() {
         </div>
       </div>
 
+      <div className="mb-3 flex gap-2">
+  {[["all", "All applicants"], ["high", "High ATS (75+)"]].map(([key, label]) => (
+    <button
+      key={key}
+      onClick={() => setAtsView(key)}
+      className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+        atsView === key ? "bg-blue-600 text-white" : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
+      }`}
+    >
+      {label}
+    </button>
+  ))}
+</div>
+
       {/* ── Status tabs ── */}
       <div className="mb-0 flex gap-0 border-b border-gray-200">
         {STATUS_TABS.map((s) => (
@@ -575,10 +594,10 @@ export default function HRApplicants() {
         {/* Horizontally-scrollable region (desktop): Candidate column stays fixed
             (sticky), everything from Email through Actions scrolls together. */}
         <div className="hidden md:block overflow-x-auto">
-          <div className="min-w-[1130px]">
+          <div className="min-w-[1280px]">
 
             {/* Table head */}
-            <div className="grid grid-cols-[220px_200px_140px_200px_140px_150px_110px_100px] items-center border-b border-gray-100 bg-gray-50/70 text-xs font-semibold uppercase tracking-wide text-gray-400">
+            <div className="grid grid-cols-[220px_200px_140px_200px_140px_150px_150px_110px_100px] items-center border-b border-gray-100 bg-gray-50/70 text-xs font-semibold uppercase tracking-wide text-gray-400">
               <div className="sticky left-0 z-10 bg-gray-50/70 px-5 py-3">Candidate</div>
               <div className="px-3 py-3">Email</div>
               <div className="px-3 py-3">Experience</div>
@@ -592,6 +611,7 @@ export default function HRApplicants() {
                   <HiMiniChevronUpDown className={`h-3 w-3 ${sortBy === "cv_desc" || sortBy === "cv_asc" ? "text-blue-600" : ""}`} />
                 </span>
               </button>
+              <div className="px-3 py-3">ATS / Match</div>
               <div className="flex items-center gap-1 cursor-pointer select-none px-3 py-3"
                 onClick={() => setSortBy(sortBy === "date_desc" ? "date_asc" : "date_desc")}>
                 Applied Date <HiMiniChevronUpDown className={`h-3 w-3 ${sortBy === "date_desc" || sortBy === "date_asc" ? "text-blue-600" : ""}`} />
@@ -612,13 +632,18 @@ export default function HRApplicants() {
                 <div key={app._id} className="group border-b border-gray-50 last:border-0 hover:bg-gray-50/40 transition">
 
                   {/* ── Desktop row ── */}
-                  <div className="grid grid-cols-[220px_200px_140px_200px_140px_150px_110px_100px] items-center">
+                  <div className="grid grid-cols-[220px_200px_140px_200px_140px_150px_150px_110px_100px] items-center">
 
                     {/* Candidate — sticky, no CV rating here */}
                     <div className="sticky left-0 z-10 flex items-center gap-3 min-w-0 bg-white group-hover:bg-gray-50/40 transition px-5 py-3.5">
                       <CandidateAvatar user={app.user} />
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-gray-800">{app.applicantName  || "—"}</p>
+                        <p
+                          onClick={() => { setExpandedId(isExp ? null : app._id); setDetailTab("cv"); }}
+                          className="truncate text-sm font-semibold text-gray-800 cursor-pointer hover:text-blue-600"
+                        >
+                          {app.applicantName || "—"}
+                        </p>
                       </div>
                     </div>
 
@@ -664,6 +689,25 @@ export default function HRApplicants() {
                       )}
                     </div>
 
+
+                    {/* ATS scores */}
+                    <div className="min-w-0 px-3 py-3.5">
+                      {typeof app.atsScore === "number" ? (
+                        <div className="space-y-0.5 text-xs">
+                          <p className={`font-bold ${ratingColors(app.atsScore).text}`}>
+                            ATS {Math.round(app.atsScore)}
+                          </p>
+                          <p className={`font-medium ${ratingColors(app.jobMatchScore ?? 0).text}`}>
+                            Match {Math.round(app.jobMatchScore ?? 0)}
+                          </p>
+                        </div>
+                      ) : app.atsStatus === "failed" ? (
+                        <span className="text-xs text-red-400">Failed</span>
+                      ) : (
+                        <span className="text-xs text-gray-300">—</span>
+                      )}
+                    </div>
+
                     {/* Applied date */}
                     <div className="px-3 py-3.5">
                       <p className="text-sm text-gray-600">
@@ -682,7 +726,7 @@ export default function HRApplicants() {
                     {/* Actions */}
                     <div className="flex items-center justify-center gap-1 px-5 py-3.5">
                       <button
-                        onClick={() => { setExpandedId(isExp ? null : app._id); setDetailTab("cv"); }}
+                        onClick={() => navigate(`/jobs/${app.job._id}`)}
                         title="View Details"
                         className={`rounded-lg p-2 transition-all duration-150 hover:scale-110 ${
                           isExp ? "bg-blue-50 text-blue-600" : "text-gray-500 hover:bg-blue-50 hover:text-blue-600"
@@ -758,12 +802,17 @@ export default function HRApplicants() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-gray-800">{app.user?.name || "—"}</p>
+                        <p
+                          onClick={() => { setExpandedId(isExp ? null : app._id); setDetailTab("cv"); }}
+                          className="truncate text-sm font-semibold text-gray-800 cursor-pointer hover:text-blue-600"
+                        >
+                          {app.user?.name || "—"}
+                        </p>
                         <p className="truncate text-xs text-gray-400">{app.user?.email || "—"}</p>
                       </div>
                       <div className="flex items-center gap-0.5 shrink-0">
                         <button
-                          onClick={() => { setExpandedId(isExp ? null : app._id); setDetailTab("cv"); }}
+                          onClick={() => navigate(`/jobs/${app.job._id}`)}
                           className={`rounded-lg p-1.5 transition-all duration-150 hover:scale-110 ${
                             isExp ? "bg-blue-50 text-blue-600" : "text-gray-500 hover:bg-blue-50 hover:text-blue-600"
                           }`}

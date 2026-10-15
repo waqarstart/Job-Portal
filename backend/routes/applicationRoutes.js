@@ -7,6 +7,8 @@ import Application from "../models/Application.js";
 import Job from "../models/Job.js";
 import CV from "../models/CV.js";
 
+import { analyzeWithAts } from "../utils/atsClient.js";
+
 import {
   requireAuth,
   requireAdmin,
@@ -172,6 +174,25 @@ router.post("/public/:jobId", upload.single("cv"), async (req, res) => {
     });
 
     res.status(201).json({ message: "Application submitted.", applicationId: application._id });
+
+        // Background ATS check
+    (async () => {
+      try {
+        const scores = await analyzeWithAts({
+          filePath: cvFilePath,
+          originalName: req.file.originalname,
+          jobDescription: job.description,
+        });
+        await Application.findByIdAndUpdate(application._id, {
+          ...scores,
+          atsStatus: "completed",
+        });
+        console.log("ATS scores saved:", scores);
+      } catch (atsError) {
+        console.error("ATS check failed:", atsError);
+        await Application.findByIdAndUpdate(application._id, { atsStatus: "failed" }).catch(() => {});
+      }
+    })();
 
     // Background CV evaluation, same as the logged-in apply route
     (async () => {
@@ -404,6 +425,26 @@ router.post(
       // ───────────────────────────────────────────────────────
 
       res.status(201).json(application);
+
+
+       // Background ATS check
+      (async () => {
+        try {
+          const scores = await analyzeWithAts({
+            filePath: cvFilePath,
+            originalName: cvOriginalName,
+            jobDescription: job.description,
+          });
+          await Application.findByIdAndUpdate(application._id, {
+            ...scores,
+            atsStatus: "completed",
+          });
+          console.log("ATS scores saved:", scores);
+        } catch (atsError) {
+          console.error("ATS check failed:", atsError);
+          await Application.findByIdAndUpdate(application._id, { atsStatus: "failed" }).catch(() => {});
+        }
+      })();
 
       // ───────────────────────────────────────────────────────
       // Background CV evaluation (not awaited — runs after the

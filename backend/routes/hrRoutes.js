@@ -370,11 +370,17 @@ router.delete("/jobs/:id", requireAuth, requireHR, async (req, res) => {
 
 // ── Applicants ───────────────────────────────────────────────────────────────
 router.get("/applicants", requireAuth, requireHR, async (req, res) => {
+  
   try {
     const myJobs = await Job.find({ postedBy: req.user.id });
     const jobIds = myJobs.map((j) => j._id);
+    const filter = { job: { $in: jobIds } };
 
-    const applications = await Application.find({ job: { $in: jobIds } })
+    if (req.query.highAts === "true") {
+      filter.atsScore = { $gte: Number(process.env.ATS_THRESHOLD) || 80 };
+    }
+
+    const applications = await Application.find(filter)
       .populate("job", "title company city")
       .populate("user", "name email phone location skills yearsOfExperience profilePicture")
       .sort({ createdAt: -1 });
